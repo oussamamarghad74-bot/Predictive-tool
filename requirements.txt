@@ -1,0 +1,6 @@
+streamlit
+pandas
+numby
+librosa
+matplotlib
+plotly
