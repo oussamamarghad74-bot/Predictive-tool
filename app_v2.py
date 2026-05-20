@@ -86,7 +86,26 @@ div[role="option"]:hover {
 button {
     border-radius: 12px !important;
 }
+/* البطاقات الصغيرة */
+div[data-testid="stMetric"] {
+    background: white !important;
+    border-radius: 20px !important;
+    padding: 15px !important;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1) !important;
+}
 
+/* النص داخل البطاقات */
+div[data-testid="stMetric"] * {
+    color: black !important;
+}
+
+/* الأزرار السفلية */
+.stButton > button {
+    background: #f0f0f0 !important;
+    color: black !important;
+    border-radius: 12px !important;
+    border: 1px solid #cccccc !important;
+}
 </style>
 """, unsafe_allow_html=True)
 import numpy as np
