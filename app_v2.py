@@ -80,42 +80,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-if "machines" not in st.session_state:
-    st.session_state.machines = []
-
-st.sidebar.header("Neue Maschine hinzufügen")
-
-machine_name = st.sidebar.text_input("Maschinenname")
-
-sicherheitsmarge = st.sidebar.slider(
-    "Sicherheitsmarge [min]",
-    0, 20, 5
-)
-
-wahrscheinlichkeit = st.sidebar.slider(
-    "Wahrscheinlichkeit Werkzeug nicht auf Lager",
-    0.0, 1.0, 0.20
-)
-
-status = st.sidebar.selectbox(
-    "Maschinenstatus",
-    ["Aktiv", "Wartung", "Defekt"]
-)
-
-priority = st.sidebar.selectbox(
-    "Priorität",
-    ["Hoch", "Mittel", "Niedrig"]
-)
-
-if st.sidebar.button("Maschine hinzufügen"):
-
-    st.session_state.machines.append({
-        "name": machine_name,
-        "sicherheitsmarge": sicherheitsmarge,
-        "wahrscheinlichkeit": wahrscheinlichkeit,
-        "status": status,
-        "priority": priority
-    })
 # =========================================================
 # Global Settings
 # =========================================================
