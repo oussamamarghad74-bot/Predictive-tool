@@ -12,7 +12,8 @@ st.markdown("""
 
 /* الصفحة */
 html, body, .stApp {
-    background-color: white !important;
+    background-color: linear-gradient(135deg, #dfe9f3, #ffffff) !important;
+color: black !important;
 }
 
 /* كل النصوص الافتراضية */
