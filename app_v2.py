@@ -894,7 +894,7 @@ st.markdown("""
 # =========================================================
 
 st.sidebar.header("⚙️ Prototype-Konfiguration")
-
+demo_mode = st.sidebar.checkbox("🎓 Professor Demo Scenario", value=False)
 scenario = st.sidebar.selectbox(
     "Szenario",
     [
