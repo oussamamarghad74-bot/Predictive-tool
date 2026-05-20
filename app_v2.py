@@ -1,5 +1,57 @@
 import streamlit as st
 import streamlit as st
+import streamlit as st
+
+st.set_page_config(layout="wide")
+
+st.title("Predictive Logistics System")
+
+# حفظ الآلات
+if "machines" not in st.session_state:
+    st.session_state.machines = []
+
+# إضافة آلة جديدة
+st.sidebar.header("Neue Maschine hinzufügen")
+
+machine_name = st.sidebar.text_input("Maschinenname")
+
+sicherheitsmarge = st.sidebar.slider(
+    "Sicherheitsmarge [min]",
+    0, 20, 5
+)
+
+wahrscheinlichkeit = st.sidebar.slider(
+    "Wahrscheinlichkeit Werkzeug nicht auf Lager",
+    0.0, 1.0, 0.20
+)
+
+# زر الإضافة
+if st.sidebar.button("Maschine hinzufügen"):
+
+    st.session_state.machines.append({
+        "name": machine_name,
+        "sicherheitsmarge": sicherheitsmarge,
+        "wahrscheinlichkeit": wahrscheinlichkeit
+    })
+
+# عرض جميع الآلات
+for machine in st.session_state.machines:
+
+    st.header(machine["name"])
+
+    st.write(
+        "Sicherheitsmarge:",
+        machine["sicherheitsmarge"]
+    )
+
+    st.write(
+        "Wahrscheinlichkeit:",
+        machine["wahrscheinlichkeit"]
+    )
+
+    st.progress(machine["wahrscheinlichkeit"])
+
+    st.markdown("---")
 
 st.set_page_config(layout="wide")
 
