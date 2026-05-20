@@ -1,9 +1,6 @@
 import streamlit as st
 import streamlit as st
-priority = st.selectbox(
-    "Priorität",
-    ["Hoch", "Mittel", "Niedrig"]
-)
+
 st.set_page_config(layout="wide")
 
 st.markdown("""
