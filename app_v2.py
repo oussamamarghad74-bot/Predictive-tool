@@ -74,10 +74,7 @@ h1, h2, h3 {
 
 </style>
 """, unsafe_allow_html=True)
-</style>
-""", unsafe_allow_html=True
-</style>
-""", unsafe_allow_html=True)
+
 import numpy as np
 import pandas as pd
 import librosa
