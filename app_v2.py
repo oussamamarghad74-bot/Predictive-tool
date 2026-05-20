@@ -69,6 +69,10 @@ input {
 
 /* Headers */
 h1, h2, h3 {
+    color: black !important;
+}
+/* جميع النصوص داخل الهيدر */
+.header-text {
     color: white !important;
 }
 
