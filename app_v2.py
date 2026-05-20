@@ -9,7 +9,7 @@ st.markdown("""
 
 /* الصفحة */
 html, body, .stApp {
-    background-color: linear-gradient(135deg, #dfe9f3, #ffffff) !important;
+    background: linear-gradient(135deg, #dfe9f3, #ffffff) !important;
 color: black !important;
 }
 
