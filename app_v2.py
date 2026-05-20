@@ -10,42 +10,43 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* الخلفية العامة */
+/* الصفحة */
 html, body, .stApp {
     background-color: white !important;
 }
 
-/* النصوص العادية */
-body, p, label, span, div {
+/* كل النصوص الافتراضية */
+body, p, span, label {
     color: black !important;
-    font-size: 18px !important;
 }
 
-/* العنوان الرئيسي الكبير */
+/* العنوان الرئيسي */
 h1 {
     color: white !important;
-    font-size: 48px !important;
-    font-weight: 800 !important;
+    font-size: 52px !important;
+    font-weight: 900 !important;
 }
 
-/* العناوين الثانوية */
+/* العنوان الفرعي */
 h2, h3 {
     color: black !important;
 }
 
-/* الفقرة تحت العنوان الرئيسي */
-.hero-text p {
+/* أي نص داخل الهيدر البنفسجي */
+div[style*="linear-gradient"] * {
     color: white !important;
-    font-size: 22px !important;
+}
+
+/* البطاقات الداكنة */
+div[style*="background: #0f172a"] * {
+    color: white !important;
 }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #f5f5f5 !important;
-    width: 380px !important;
 }
 
-/* نصوص الـ Sidebar */
 section[data-testid="stSidebar"] * {
     color: black !important;
 }
@@ -58,44 +59,30 @@ div[data-baseweb="select"] > div {
     border-radius: 12px !important;
 }
 
-/* النص داخل Selectbox */
 div[data-baseweb="select"] span {
     color: black !important;
-    opacity: 1 !important;
-    font-size: 18px !important;
 }
 
-/* القائمة المنسدلة */
+/* القائمة */
 div[role="listbox"] {
     background-color: white !important;
 }
 
-/* الاختيارات */
 div[role="option"] {
     background-color: white !important;
     color: black !important;
-    font-size: 18px !important;
 }
 
-/* عند المرور بالماوس */
 div[role="option"]:hover {
     background-color: #e6e6e6 !important;
-    color: black !important;
 }
 
-/* Inputs */
-input {
-    color: black !important;
-}
-
-/* السلايدر */
+/* Slider */
 .stSlider label {
     color: black !important;
-    font-size: 18px !important;
-    font-weight: bold !important;
 }
 
-/* أزرار التنقل */
+/* الأزرار */
 button {
     border-radius: 12px !important;
 }
