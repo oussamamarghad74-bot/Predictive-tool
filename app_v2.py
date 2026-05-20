@@ -895,6 +895,15 @@ st.markdown("""
 
 st.sidebar.header("⚙️ Prototype-Konfiguration")
 demo_mode = st.sidebar.checkbox("🎓 Professor Demo Scenario", value=False)
+priority_map = {
+    "SOFORT_STOPP": 1,
+    "BESTANDSRISIKO": 2,
+    "AUTO_AUFTRAG": 3,
+    "BEDIENER_FREIGABE": 4,
+    "UNSICHER_WARNUNG": 5,
+    "VORWARNUNG": 6,
+    "MONITORING": 7
+}
 if demo_mode:
     fleet.loc[0, "Maschine"] = "M07"
     fleet.loc[0, "Werkzeug_ID"] = "T-482"
