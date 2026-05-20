@@ -10,41 +10,67 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* الصفحة كاملة */
+/* الخلفية العامة */
 html, body, .stApp {
     background-color: white !important;
+}
+
+/* النصوص العادية */
+body, p, label, span, div {
+    color: black !important;
+    font-size: 18px !important;
+}
+
+/* العنوان الرئيسي الكبير */
+h1 {
+    color: white !important;
+    font-size: 48px !important;
+    font-weight: 800 !important;
+}
+
+/* العناوين الثانوية */
+h2, h3 {
     color: black !important;
 }
 
-/* جميع النصوص */
-* {
-    color: black !important;
+/* الفقرة تحت العنوان الرئيسي */
+.hero-text p {
+    color: white !important;
+    font-size: 22px !important;
 }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #f5f5f5 !important;
+    width: 380px !important;
 }
 
-/* Selectbox الأساسي */
+/* نصوص الـ Sidebar */
+section[data-testid="stSidebar"] * {
+    color: black !important;
+}
+
+/* Selectbox */
 div[data-baseweb="select"] > div {
     background-color: white !important;
     color: black !important;
     border: 2px solid #cccccc !important;
+    border-radius: 12px !important;
 }
 
-/* النص داخل selectbox */
+/* النص داخل Selectbox */
 div[data-baseweb="select"] span {
     color: black !important;
     opacity: 1 !important;
+    font-size: 18px !important;
 }
 
-/* القائمة عند الفتح */
+/* القائمة المنسدلة */
 div[role="listbox"] {
     background-color: white !important;
 }
 
-/* كل اختيار داخل القائمة */
+/* الاختيارات */
 div[role="option"] {
     background-color: white !important;
     color: black !important;
@@ -62,24 +88,20 @@ input {
     color: black !important;
 }
 
-/* Sliders */
+/* السلايدر */
 .stSlider label {
     color: black !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
 }
 
-/* Headers */
-h1, h2, h3 {
-    color: white !important;
-}
-
-/* النصوص تحت العنوان */
-p {
-    color: white !important;
+/* أزرار التنقل */
+button {
+    border-radius: 12px !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
 import numpy as np
 import pandas as pd
 import librosa
