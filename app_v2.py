@@ -7,6 +7,25 @@ st.set_page_config(
     page_title="Predictive Logistics System",
     layout="wide"
 )
+st.markdown("""
+<style>
+
+html, body, [class*="css"] {
+    color: black !important;
+    font-size: 18px !important;
+}
+
+section[data-testid="stSidebar"] {
+    background-color: #f5f5f5;
+    width: 350px !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: black !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 st.set_page_config(layout="wide")
 
 st.markdown("""
