@@ -1,8 +1,8 @@
 import streamlit as st
 import streamlit as st
-status = st.selectbox(
-    "Maschinenstatus",
-    ["Aktiv", "Wartung", "Defekt"]
+priority = st.selectbox(
+    "Priorität",
+    ["Hoch", "Mittel", "Niedrig"]
 )
 st.set_page_config(layout="wide")
 
