@@ -14,6 +14,29 @@ html, body, [class*="css"] {
     color: black !important;
     font-size: 18px !important;
 }
+/* القائمة المنسدلة */
+div[data-baseweb="select"] > div {
+    background-color: white !important;
+    color: black !important;
+    font-size: 18px !important;
+}
+
+/* النص داخل الاختيارات */
+div[data-baseweb="select"] span {
+    color: black !important;
+}
+
+/* القائمة المفتوحة */
+ul {
+    background-color: white !important;
+    color: black !important;
+}
+
+/* عناصر القائمة */
+li {
+    color: black !important;
+    font-size: 18px !important;
+}
 
 section[data-testid="stSidebar"] {
     background-color: #f5f5f5;
