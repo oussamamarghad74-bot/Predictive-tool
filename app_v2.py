@@ -79,6 +79,7 @@ import io
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
+
 for machine in st.session_state.machines:
 
     st.header(machine["name"])
@@ -109,7 +110,6 @@ for machine in st.session_state.machines:
         st.success("Niedriges Risiko")
 
     st.markdown("---")
-
 # =========================================================
 # Global Settings
 # =========================================================
