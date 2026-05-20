@@ -10,84 +10,72 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-html, body, [class*="css"] {
+/* الصفحة كاملة */
+html, body, .stApp {
+    background-color: white !important;
     color: black !important;
-    font-size: 18px !important;
 }
-/* القائمة المنسدلة */
+
+/* جميع النصوص */
+* {
+    color: black !important;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #f5f5f5 !important;
+}
+
+/* Selectbox الأساسي */
 div[data-baseweb="select"] > div {
     background-color: white !important;
     color: black !important;
-    font-size: 18px !important;
+    border: 2px solid #cccccc !important;
 }
 
-/* النص داخل الاختيارات */
+/* النص داخل selectbox */
 div[data-baseweb="select"] span {
     color: black !important;
+    opacity: 1 !important;
 }
 
-/* القائمة المفتوحة */
-ul {
+/* القائمة عند الفتح */
+div[role="listbox"] {
     background-color: white !important;
-    color: black !important;
 }
 
-/* عناصر القائمة */
-li {
+/* كل اختيار داخل القائمة */
+div[role="option"] {
+    background-color: white !important;
     color: black !important;
     font-size: 18px !important;
 }
 
-section[data-testid="stSidebar"] {
-    background-color: #f5f5f5;
-    width: 350px !important;
+/* عند المرور بالماوس */
+div[role="option"]:hover {
+    background-color: #e6e6e6 !important;
+    color: black !important;
 }
 
-section[data-testid="stSidebar"] * {
+/* Inputs */
+input {
+    color: black !important;
+}
+
+/* Sliders */
+.stSlider label {
+    color: black !important;
+}
+
+/* Headers */
+h1, h2, h3 {
     color: black !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-st.set_page_config(layout="wide")
-
-st.markdown("""
-<style>
-
-/* لون الصفحة */
-.main {
-    background-color: white;
-}
-
-/* جميع النصوص */
-html, body, [class*="css"] {
-    color: black !important;
-    font-size: 18px !important;
-}
-
-/* تكبير الكتابة الجانبية */
-section[data-testid="stSidebar"] {
-    width: 380px !important;
-    background-color: #f5f5f5;
-}
-
-/* عناوين السلايدر */
-.stSlider label {
-    color: black !important;
-    font-size: 18px !important;
-    font-weight: bold !important;
-}
-
-/* النصوص داخل السايدبار */
-section[data-testid="stSidebar"] * {
-    color: black !important;
-}
-
-/* العناوين */
-h1, h2, h3 {
-    color: black !important;
-}
-
+</style>
+""", unsafe_allow_html=True
 </style>
 """, unsafe_allow_html=True)
 import numpy as np
