@@ -1,6 +1,9 @@
 import streamlit as st
 import streamlit as st
-
+status = st.selectbox(
+    "Maschinenstatus",
+    ["Aktiv", "Wartung", "Defekt"]
+)
 st.set_page_config(layout="wide")
 
 st.markdown("""
