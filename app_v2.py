@@ -79,6 +79,36 @@ import io
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
+for machine in st.session_state.machines:
+
+    st.header(machine["name"])
+
+    st.write("Status:", machine["status"])
+
+    st.write("Priorität:", machine["priority"])
+
+    st.write(
+        "Sicherheitsmarge:",
+        machine["sicherheitsmarge"]
+    )
+
+    st.write(
+        "Wahrscheinlichkeit:",
+        machine["wahrscheinlichkeit"]
+    )
+
+    st.progress(machine["wahrscheinlichkeit"])
+
+    if machine["wahrscheinlichkeit"] > 0.7:
+        st.error("Hohes Risiko")
+
+    elif machine["wahrscheinlichkeit"] > 0.4:
+        st.warning("Mittleres Risiko")
+
+    else:
+        st.success("Niedriges Risiko")
+
+    st.markdown("---")
 
 # =========================================================
 # Global Settings
