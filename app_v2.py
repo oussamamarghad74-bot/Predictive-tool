@@ -69,7 +69,12 @@ input {
 
 /* Headers */
 h1, h2, h3 {
-    color: black !important;
+    color: white !important;
+}
+
+/* النصوص تحت العنوان */
+p {
+    color: white !important;
 }
 
 </style>
