@@ -7,12 +7,6 @@ import plotly.express as px
 st.markdown("""
 <style>
 
-/* الصفحة */
-html, body, .stApp {
-    background: linear-gradient(135deg, #dfe9f3, #ffffff) !important;
-color: black !important;
-}
-
 /* كل النصوص الافتراضية */
 body, p, span, label {
     color: black !important;
