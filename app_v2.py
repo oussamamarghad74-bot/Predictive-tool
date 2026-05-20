@@ -87,17 +87,32 @@ div[role="option"]:hover {
 button {
     border-radius: 12px !important;
 }
-/* البطاقات الصغيرة */
-div[data-testid="stMetric"] {
-    background: white !important;
-    border-radius: 20px !important;
-    padding: 15px !important;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1) !important;
+/* ===== KPI / Metric Cards ===== */
+
+[data-testid="metric-container"] {
+    background: linear-gradient(135deg, #ffffff, #f3f4f6) !important;
+    border: 2px solid #d1d5db !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
 }
 
-/* النص داخل البطاقات */
-div[data-testid="stMetric"] * {
-    color: black !important;
+/* كل النصوص داخل البطاقة */
+[data-testid="metric-container"] * {
+    color: #111827 !important;
+}
+
+/* الرقم الكبير */
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: #2563eb !important;
+    font-size: 32px !important;
+    font-weight: 800 !important;
+}
+
+/* عنوان البطاقة */
+[data-testid="metric-container"] [data-testid="stMetricLabel"] {
+    color: #374151 !important;
+    font-weight: 600 !important;
 }
 
 /* الأزرار السفلية */
