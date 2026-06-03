@@ -1012,13 +1012,14 @@ with col5:
 # Tabs
 # =========================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🏭 Control Tower",
     "🔍 Maschinen-Detail",
     "🎧 Audio & KI Analyse",
     "🚚 Logistik-Leitstand",
     "📊 KPI Simulation",
-    "🧩 Architektur & Pitch"
+    "🧩 Architektur & Pitch",
+    "🤖 AI Assistant"
 ])
 
 
@@ -1583,3 +1584,53 @@ Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
     })
 
     st.dataframe(risks, use_container_width=True, hide_index=True)
+# =========================================================
+# Tab 7 : AI Assistant
+# =========================================================
+
+with tab7:
+
+    st.header("🤖 AI Logistics Assistant")
+
+    st.write(
+        "Ask questions about the current factory status."
+    )
+
+    question = st.text_input(
+        "Question"
+    )
+
+    if st.button("Analyze Factory"):
+
+        highest_risk = fleet.iloc[0]
+
+        st.subheader("Current Highest Risk Machine")
+
+        st.write(
+            f"""
+            Machine: {highest_risk['Maschine']}
+
+            Tool: {highest_risk['Werkzeug_ID']}
+
+            Condition: {highest_risk['KI_Zustand']}
+
+            Decision: {highest_risk['Entscheidung']}
+
+            RUL: {highest_risk['RUL_min']} min
+
+            Lead Time:
+            {highest_risk['Logistische_Vorlaufzeit_min']} min
+            """
+        )
+
+        if highest_risk["RUL_min"] < highest_risk["Logistische_Vorlaufzeit_min"]:
+
+            st.error(
+                "Tool replacement should be initiated immediately."
+            )
+
+        else:
+
+            st.success(
+                "No immediate replacement required."
+            )
