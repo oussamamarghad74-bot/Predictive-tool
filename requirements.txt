@@ -4,3 +4,4 @@ numby
 librosa
 matplotlib
 plotly
+tabulate
