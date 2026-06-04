@@ -1585,52 +1585,88 @@ Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
 
     st.dataframe(risks, use_container_width=True, hide_index=True)
 # =========================================================
-# Tab 7 : AI Assistant
+# Tab 7: KI-Entscheidungsassistent
 # =========================================================
 
 with tab7:
 
-    st.header("🤖 AI Logistics Assistant")
+    st.header("🧠 KI-Entscheidungsassistent")
 
     st.write(
-        "Ask questions about the current factory status."
+        "Automatische Analyse des aktuellen Fabrikzustands."
     )
 
-    question = st.text_input(
-        "Question"
-    )
+    if st.button("Fabrik analysieren"):
 
-    if st.button("Analyze Factory"):
+        kritische_maschinen = fleet[
+            fleet["Entscheidung"].isin(
+                [
+                    "SOFORT_STOPP",
+                    "AUTO_AUFTRAG",
+                    "BESTANDSRISIKO"
+                ]
+            )
+        ]
 
-        highest_risk = fleet.iloc[0]
-
-        st.subheader("Current Highest Risk Machine")
+        st.subheader("KI-Zusammenfassung")
 
         st.write(
-            f"""
-            Machine: {highest_risk['Maschine']}
-
-            Tool: {highest_risk['Werkzeug_ID']}
-
-            Condition: {highest_risk['KI_Zustand']}
-
-            Decision: {highest_risk['Entscheidung']}
-
-            RUL: {highest_risk['RUL_min']} min
-
-            Lead Time:
-            {highest_risk['Logistische_Vorlaufzeit_min']} min
-            """
+            f"Anzahl CNC-Maschinen: {len(fleet)}"
         )
 
-        if highest_risk["RUL_min"] < highest_risk["Logistische_Vorlaufzeit_min"]:
+        st.write(
+            f"Kritische Maschinen: {len(kritische_maschinen)}"
+        )
+
+        if len(kritische_maschinen) > 0:
+
+            top = kritische_maschinen.iloc[0]
 
             st.error(
-                "Tool replacement should be initiated immediately."
+                f"""
+                Höchste Priorität:
+
+                Maschine: {top['Maschine']}
+
+                Werkzeug: {top['Werkzeug_ID']}
+
+                Zustand: {top['KI_Zustand']}
+
+                RUL: {top['RUL_min']} min
+
+                Logistische Vorlaufzeit:
+                {top['Logistische_Vorlaufzeit_min']} min
+
+                Entscheidung:
+                {top['Entscheidung']}
+                """
             )
+
+            erklaerung = f"""
+            Die Maschine {top['Maschine']} wurde von der KI als kritisch erkannt.
+
+            Der Werkzeugzustand lautet:
+            {top['KI_Zustand']}.
+
+            Die verbleibende Restlebensdauer beträgt
+            {top['RUL_min']} Minuten.
+
+            Die benötigte logistische Vorlaufzeit beträgt
+            {top['Logistische_Vorlaufzeit_min']} Minuten.
+
+            Deshalb empfiehlt das System:
+
+            {top['Entscheidung']}
+
+            um einen ungeplanten Maschinenstillstand zu vermeiden.
+            """
+
+            st.success(erklaerung)
 
         else:
 
             st.success(
-                "No immediate replacement required."
+                "Keine kritischen Maschinen erkannt."
             )
+
+            Machine: {highest_risk['Maschine']}
