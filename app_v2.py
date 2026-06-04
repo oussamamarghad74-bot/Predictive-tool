@@ -902,9 +902,6 @@ priority_map = {
     "VORWARNUNG": 6,
     "MONITORING": 7
 }
-fleet = evaluate_fleet(factory_df=factory, model=model, global_noise=global_noise, safety_margin=safety_margin, preset_queue=preset_queue, agv_queue=agv_queue,
-    shortage, robability=shortage_probability, auto_threshold=auto_threshold, manual_threshold=manual_threshold, seed=int(seed) + 700
-)
 if demo_mode:
     fleet.loc[0, "Maschine"] = "M07"
     fleet.loc[0, "Werkzeug_ID"] = "T-482"
