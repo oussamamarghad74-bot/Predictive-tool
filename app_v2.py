@@ -1662,48 +1662,48 @@ with tab7:
             """
 
             st.success(erklaerung)
+                        st.success(erklaerung)
+
             st.subheader("Empfohlene Maßnahmen")
 
-if top["Entscheidung"] == "AUTO_AUFTRAG":
+            if top["Entscheidung"] == "AUTO_AUFTRAG":
 
-    st.write("""
-    ✅ Ersatzwerkzeug automatisch reservieren
+                st.write("""
+                ✅ Ersatzwerkzeug automatisch reservieren
 
-    ✅ Voreinstellauftrag erzeugen
+                ✅ Voreinstellauftrag erzeugen
 
-    ✅ Transportauftrag an AGV/FTS senden
+                ✅ Transportauftrag an AGV/FTS senden
 
-    ✅ Werkzeugwechsel vorbereiten
-    """)
+                ✅ Werkzeugwechsel vorbereiten
+                """)
 
-elif top["Entscheidung"] == "SOFORT_STOPP":
+            elif top["Entscheidung"] == "SOFORT_STOPP":
 
-    st.write("""
-    🔴 Sofortiger Werkzeugwechsel erforderlich
+                st.write("""
+                🔴 Sofortiger Werkzeugwechsel erforderlich
 
-    🔴 Produktionsleitung informieren
+                🔴 Produktionsleitung informieren
 
-    🔴 Ersatzwerkzeug priorisieren
+                🔴 Ersatzwerkzeug priorisieren
 
-    🔴 Maschinenstillstand vermeiden
-    """)
+                🔴 Maschinenstillstand vermeiden
+                """)
 
-elif top["Entscheidung"] == "BESTANDSRISIKO":
+            elif top["Entscheidung"] == "BESTANDSRISIKO":
 
-    st.write("""
-    ⚠ Ersatzwerkzeug nicht verfügbar
+                st.write("""
+                ⚠ Ersatzwerkzeug nicht verfügbar
 
-    ⚠ Sonderbeschaffung prüfen
+                ⚠ Sonderbeschaffung prüfen
 
-    ⚠ Werkzeug aus anderer Zelle umverteilen
+                ⚠ Werkzeug aus anderer Zelle umverteilen
 
-    ⚠ Produktionsplanung anpassen
-    """)
+                ⚠ Produktionsplanung anpassen
+                """)
 
         else:
 
             st.success(
                 "Keine kritischen Maschinen erkannt."
             )
-
-            Machine: {highest_risk['Maschine']}
