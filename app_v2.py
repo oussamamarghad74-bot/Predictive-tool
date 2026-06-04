@@ -1714,7 +1714,7 @@ with tab7:
 # =========================================================
 with tab8:
 
-    st.header("🤖 Chat mit der KI")
+    st.header("🤖 KI Chat Assistant")
 
     frage = st.text_input(
         "Frage an das System:"
@@ -1722,9 +1722,13 @@ with tab8:
 
     if frage:
 
+        frage_original = frage
         frage = frage.lower()
 
-        if "höchste risiko" in frage:
+        # ==================================
+        # Höchstes Risiko
+        # ==================================
+        if "höchste risiko" in frage or "risikoreichste" in frage:
 
             top = fleet.sort_values(
                 "Risk_Score",
@@ -1735,57 +1739,125 @@ with tab8:
             Maschine {top['Maschine']}
             hat aktuell das höchste Risiko.
 
-            Risiko-Score:
-            {top['Risk_Score']}
+            Risiko-Score: {top['Risk_Score']}
 
-            Zustand:
-            {top['KI_Zustand']}
+            Zustand: {top['KI_Zustand']}
 
-            Entscheidung:
-            {top['Entscheidung']}
+            Entscheidung: {top['Entscheidung']}
             """)
 
-        elif "auto-auftrag" in frage:
+        # ==================================
+        # Kritische Maschinen
+        # ==================================
+        elif "kritische" in frage:
 
-            anzahl = len(
-                fleet[
-                    fleet["Entscheidung"] == "AUTO_AUFTRAG"
+            kritisch = fleet[
+                fleet["Entscheidung"].isin(
+                    [
+                        "SOFORT_STOPP",
+                        "AUTO_AUFTRAG",
+                        "BESTANDSRISIKO"
+                    ]
+                )
+            ]
+
+            st.warning(
+                f"Kritische Maschinen: {len(kritisch)}"
+            )
+
+            st.dataframe(
+                kritisch[
+                    [
+                        "Maschine",
+                        "KI_Zustand",
+                        "RUL_min",
+                        "Entscheidung"
+                    ]
                 ]
             )
 
-            st.info(f"""
-            Aktuell existieren
-            {anzahl}
-            automatische Werkzeugaufträge.
-            """)
+        # ==================================
+        # Auto-Aufträge
+        # ==================================
+        elif "auto" in frage:
 
-        elif "kritische maschinen" in frage:
+            auto = fleet[
+                fleet["Entscheidung"] == "AUTO_AUFTRAG"
+            ]
 
-            kritisch = len(
-                fleet[
-                    fleet["Entscheidung"].isin(
-                        [
-                            "SOFORT_STOPP",
-                            "AUTO_AUFTRAG",
-                            "BESTANDSRISIKO"
-                        ]
-                    )
+            st.info(
+                f"Automatische Aufträge: {len(auto)}"
+            )
+
+            st.dataframe(
+                auto[
+                    [
+                        "Maschine",
+                        "Werkzeug_ID",
+                        "RUL_min"
+                    ]
                 ]
             )
 
-            st.warning(f"""
-            Kritische Maschinen:
-            {kritisch}
-            """)
+        # ==================================
+        # Durchschnittliche RUL
+        # ==================================
+        elif "rul" in frage and "durchschnitt" in frage:
 
+            st.success(
+                f"Die durchschnittliche RUL beträgt {fleet['RUL_min'].mean():.1f} Minuten."
+            )
+
+        # ==================================
+        # Maschinenabfrage
+        # ==================================
         else:
 
-            st.write("""
-            Frage nicht erkannt.
+            gefunden = False
 
-            Beispiel:
+            for machine in fleet["Maschine"]:
 
-            - Welche Maschine hat das höchste Risiko?
-            - Wie viele kritische Maschinen gibt es?
-            - Wie viele Auto-Aufträge existieren?
-            """)
+                if machine.lower() in frage:
+
+                    row = fleet[
+                        fleet["Maschine"] == machine
+                    ].iloc[0]
+
+                    st.success(f"""
+                    Maschine: {row['Maschine']}
+
+                    Werkzeug: {row['Werkzeug_ID']}
+
+                    Zustand: {row['KI_Zustand']}
+
+                    Confidence: {row['Confidence']:.2f}
+
+                    RUL: {row['RUL_min']} min
+
+                    Logistische Vorlaufzeit:
+                    {row['Logistische_Vorlaufzeit_min']} min
+
+                    Entscheidung:
+                    {row['Entscheidung']}
+
+                    Risiko-Score:
+                    {row['Risk_Score']}
+                    """)
+
+                    gefunden = True
+                    break
+
+            if not gefunden:
+
+                st.info("""
+                Frage nicht erkannt.
+
+                Beispiele:
+
+                - Welche Maschine hat das höchste Risiko?
+                - Wie viele kritische Maschinen gibt es?
+                - Wie viele Auto-Aufträge existieren?
+                - Wie hoch ist die durchschnittliche RUL?
+                - Informationen über Maschine M07
+                - Status von M12
+                """)
