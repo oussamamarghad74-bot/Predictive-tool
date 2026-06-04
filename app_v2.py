@@ -2035,6 +2035,8 @@ with tab8:
     # ============================================
     # زر مسح المحادثة (خارج شرط if frage)
     # ============================================
-    if st.button("🗑️ Chat-Verlauf löschen", key="clear_chat"):
+    col_chat, col_clear = st.columns([4, 1])
+with col_clear:
+    if st.button("🗑️ Löschen", key="clear_chat"):
         st.session_state.chat_history = []
         st.rerun()
