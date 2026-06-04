@@ -902,7 +902,8 @@ priority_map = {
     "VORWARNUNG": 6,
     "MONITORING": 7
 }
-fleet = evaluate_fleet(factory_df=factory,
+fleet = evaluate_fleet(
+    factory_df=factory,
     model=model,
     global_noise=global_noise,
     safety_margin=safety_margin,
