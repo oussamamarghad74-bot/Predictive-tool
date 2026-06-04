@@ -1012,7 +1012,7 @@ with col5:
 # Tabs
 # =========================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🏭 Control Tower",
     "🔍 Maschinen-Detail",
     "🎧 Audio & KI Analyse",
@@ -1709,6 +1709,9 @@ with tab7:
             st.success(
                 "Keine kritischen Maschinen erkannt."
             )
+# =========================================================
+# Tab 8: KI-Chat
+# =========================================================
 with tab8:
 
     st.header("🤖 Chat mit der KI")
