@@ -1662,6 +1662,43 @@ with tab7:
             """
 
             st.success(erklaerung)
+            st.subheader("Empfohlene Maßnahmen")
+
+if top["Entscheidung"] == "AUTO_AUFTRAG":
+
+    st.write("""
+    ✅ Ersatzwerkzeug automatisch reservieren
+
+    ✅ Voreinstellauftrag erzeugen
+
+    ✅ Transportauftrag an AGV/FTS senden
+
+    ✅ Werkzeugwechsel vorbereiten
+    """)
+
+elif top["Entscheidung"] == "SOFORT_STOPP":
+
+    st.write("""
+    🔴 Sofortiger Werkzeugwechsel erforderlich
+
+    🔴 Produktionsleitung informieren
+
+    🔴 Ersatzwerkzeug priorisieren
+
+    🔴 Maschinenstillstand vermeiden
+    """)
+
+elif top["Entscheidung"] == "BESTANDSRISIKO":
+
+    st.write("""
+    ⚠ Ersatzwerkzeug nicht verfügbar
+
+    ⚠ Sonderbeschaffung prüfen
+
+    ⚠ Werkzeug aus anderer Zelle umverteilen
+
+    ⚠ Produktionsplanung anpassen
+    """)
 
         else:
 
