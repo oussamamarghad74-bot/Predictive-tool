@@ -902,6 +902,7 @@ priority_map = {
     "VORWARNUNG": 6,
     "MONITORING": 7
 }
+fleet = evaluate_fleet(...)
 if demo_mode:
     fleet.loc[0, "Maschine"] = "M07"
     fleet.loc[0, "Werkzeug_ID"] = "T-482"
