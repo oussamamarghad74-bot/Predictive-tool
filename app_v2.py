@@ -1019,7 +1019,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🚚 Logistik-Leitstand",
     "📊 KPI Simulation",
     "🧩 Architektur & Pitch",
-    "🤖 AI Assistant"
+    "🤖 AI Assistant",
+    "🤖 KI-Chat"
 ])
 
 
@@ -1708,3 +1709,80 @@ with tab7:
             st.success(
                 "Keine kritischen Maschinen erkannt."
             )
+with tab8:
+
+    st.header("🤖 Chat mit der KI")
+
+    frage = st.text_input(
+        "Frage an das System:"
+    )
+
+    if frage:
+
+        frage = frage.lower()
+
+        if "höchste risiko" in frage:
+
+            top = fleet.sort_values(
+                "Risk_Score",
+                ascending=False
+            ).iloc[0]
+
+            st.success(f"""
+            Maschine {top['Maschine']}
+            hat aktuell das höchste Risiko.
+
+            Risiko-Score:
+            {top['Risk_Score']}
+
+            Zustand:
+            {top['KI_Zustand']}
+
+            Entscheidung:
+            {top['Entscheidung']}
+            """)
+
+        elif "auto-auftrag" in frage:
+
+            anzahl = len(
+                fleet[
+                    fleet["Entscheidung"] == "AUTO_AUFTRAG"
+                ]
+            )
+
+            st.info(f"""
+            Aktuell existieren
+            {anzahl}
+            automatische Werkzeugaufträge.
+            """)
+
+        elif "kritische maschinen" in frage:
+
+            kritisch = len(
+                fleet[
+                    fleet["Entscheidung"].isin(
+                        [
+                            "SOFORT_STOPP",
+                            "AUTO_AUFTRAG",
+                            "BESTANDSRISIKO"
+                        ]
+                    )
+                ]
+            )
+
+            st.warning(f"""
+            Kritische Maschinen:
+            {kritisch}
+            """)
+
+        else:
+
+            st.write("""
+            Frage nicht erkannt.
+
+            Beispiel:
+
+            - Welche Maschine hat das höchste Risiko?
+            - Wie viele kritische Maschinen gibt es?
+            - Wie viele Auto-Aufträge existieren?
+            """)
