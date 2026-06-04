@@ -1662,7 +1662,8 @@ with tab7:
             """
 
             st.success(erklaerung)
-                        st.success(erklaerung)
+            
+            st.success(erklaerung)
 
             st.subheader("Empfohlene Maßnahmen")
 
