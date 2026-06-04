@@ -1716,148 +1716,329 @@ with tab8:
 
     st.header("🤖 KI Chat Assistant")
 
-    frage = st.text_input(
-        "Frage an das System:"
+    # ============================================
+    # تخزين سجل المحادثة في حالة الجلسة
+    # ============================================
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # عرض سجل المحادثة السابق
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # ============================================
+    # حقل الإدخال
+    # ============================================
+    frage = st.chat_input(
+        "Frage an das System eingeben...",
+        key="chat_input"
     )
 
     if frage:
 
+        # حفظ سؤال المستخدم
+        st.session_state.chat_history.append({
+            "role": "user",
+            "content": frage
+        })
+
         frage_original = frage
-        frage = frage.lower()
+        frage = frage.lower().strip()
 
-        # ==================================
-        # Höchstes Risiko
-        # ==================================
-        if "höchste risiko" in frage or "risikoreichste" in frage:
+        # ============================================
+        # التحقق من وجود البيانات أولاً
+        # ============================================
+        if fleet.empty:
+            antwort = "⚠️ **Fehler:** Keine Maschinendaten verfügbar. Bitte starten Sie die Simulation."
+            
+        elif not all(col in fleet.columns for col in [
+            "Maschine", "Risk_Score", "KI_Zustand", "Entscheidung",
+            "Werkzeug_ID", "Confidence", "RUL_min", "Logistische_Vorlaufzeit_min"
+        ]):
+            antwort = "⚠️ **Fehler:** Die Datenstruktur ist unvollständig. Erforderliche Spalten fehlen."
+            
+        else:
 
-            top = fleet.sort_values(
-                "Risk_Score",
-                ascending=False
-            ).iloc[0]
+            # ==================================
+            # 1. Höchstes Risiko
+            # ==================================
+            if any(keyword in frage for keyword in [
+                "höchste risiko", "risikoreichste", "größte gefahr",
+                "welche maschine hat das höchste risiko", "gefährlichste"
+            ]):
 
-            st.success(f"""
-            Maschine {top['Maschine']}
-            hat aktuell das höchste Risiko.
+                top = fleet.sort_values(
+                    "Risk_Score",
+                    ascending=False
+                ).iloc[0]
 
-            Risiko-Score: {top['Risk_Score']}
+                antwort = f"""
+🚨 **Maschine mit höchstem Risiko**
 
-            Zustand: {top['KI_Zustand']}
+| Attribut | Wert |
+|----------|------|
+| **Maschine** | {top['Maschine']} |
+| **Risiko-Score** | {top['Risk_Score']:.2f} |
+| **Zustand** | {top['KI_Zustand']} |
+| **Werkzeug** | {top['Werkzeug_ID']} |
+| **RUL** | {top['RUL_min']} min |
+| **Entscheidung** | `{top['Entscheidung']}` |
 
-            Entscheidung: {top['Entscheidung']}
-            """)
+💡 **Empfohlene Aktion:** Sofortige Überprüfung oder Werkzeugwechsel planen.
+                """
 
-        # ==================================
-        # Kritische Maschinen
-        # ==================================
-        elif "kritische" in frage:
+            # ==================================
+            # 2. Kritische Maschinen
+            # ==================================
+            elif any(keyword in frage for keyword in [
+                "kritische", "gefährliche", "warnung", "probleme",
+                "wie viele kritische", "anzahl kritisch"
+            ]):
 
-            kritisch = fleet[
-                fleet["Entscheidung"].isin(
-                    [
+                kritisch = fleet[
+                    fleet["Entscheidung"].isin([
                         "SOFORT_STOPP",
                         "AUTO_AUFTRAG",
                         "BESTANDSRISIKO"
-                    ]
-                )
-            ]
-
-            st.warning(
-                f"Kritische Maschinen: {len(kritisch)}"
-            )
-
-            st.dataframe(
-                kritisch[
-                    [
-                        "Maschine",
-                        "KI_Zustand",
-                        "RUL_min",
-                        "Entscheidung"
-                    ]
+                    ])
                 ]
-            )
 
-        # ==================================
-        # Auto-Aufträge
-        # ==================================
-        elif "auto" in frage:
+                if len(kritisch) == 0:
+                    antwort = "✅ **Gute Nachrichten:** Keine kritischen Maschinen vorhanden. Alle Systeme laufen normal."
+                else:
+                    antwort = f"""
+⚠️ **Kritische Maschinen: {len(kritisch)}**
 
-            auto = fleet[
-                fleet["Entscheidung"] == "AUTO_AUFTRAG"
-            ]
+{kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_markdown(index=False)}
 
-            st.info(
-                f"Automatische Aufträge: {len(auto)}"
-            )
+🔄 **Logistik-Status:** {'Aufträge werden automatisch ausgelöst' if 'AUTO_AUFTRAG' in kritisch['Entscheidung'].values else 'Manuelle Eingriffe erforderlich'}
+                    """
 
-            st.dataframe(
-                auto[
-                    [
-                        "Maschine",
-                        "Werkzeug_ID",
-                        "RUL_min"
-                    ]
-                ]
-            )
+            # ==================================
+            # 3. Auto-Aufträge
+            # ==================================
+            elif any(keyword in frage for keyword in [
+                "auto-auftrag", "auto auftrag", "automatische aufträge",
+                "logistikaufträge", "bestellungen", "wie viele auto"
+            ]):
 
-        # ==================================
-        # Durchschnittliche RUL
-        # ==================================
-        elif "rul" in frage and "durchschnitt" in frage:
+                auto = fleet[fleet["Entscheidung"] == "AUTO_AUFTRAG"]
 
-            st.success(
-                f"Die durchschnittliche RUL beträgt {fleet['RUL_min'].mean():.1f} Minuten."
-            )
+                if len(auto) == 0:
+                    antwort = "📋 **Keine automatischen Aufträge** aktiv. Alle Werkzeuge haben ausreichende Restlebensdauer."
+                else:
+                    antwort = f"""
+📦 **Automatische Logistik-Aufträge: {len(auto)}**
 
-        # ==================================
-        # Maschinenabfrage
-        # ==================================
-        else:
+{auto[['Maschine', 'Werkzeug_ID', 'RUL_min', 'Logistische_Vorlaufzeit_min']].to_markdown(index=False)}
 
-            gefunden = False
+⏱️ **Durchschnittliche RUL dieser Aufträge:** {auto['RUL_min'].mean():.1f} min
+                    """
 
-            for machine in fleet["Maschine"]:
+            # ==================================
+            # 4. Durchschnittliche RUL
+            # ==================================
+            elif any(keyword in frage for keyword in [
+                "durchschnittliche rul", "mittlere rul", "rul durchschnitt",
+                "wie hoch ist die rul", "rul im schnitt"
+            ]):
 
-                if machine.lower() in frage:
+                avg_rul = fleet['RUL_min'].mean()
+                min_rul = fleet['RUL_min'].min()
+                max_rul = fleet['RUL_min'].max()
 
-                    row = fleet[
-                        fleet["Maschine"] == machine
-                    ].iloc[0]
+                antwort = f"""
+📊 **RUL-Statistiken (Remaining Useful Life)**
 
-                    st.success(f"""
-                    Maschine: {row['Maschine']}
+| Metrik | Wert |
+|--------|------|
+| **Durchschnitt** | {avg_rul:.1f} min |
+| **Minimum** | {min_rul:.1f} min |
+| **Maximum** | {max_rul:.1f} min |
+| **Maschinen mit RUL < 30min** | {len(fleet[fleet['RUL_min'] < 30])} |
 
-                    Werkzeug: {row['Werkzeug_ID']}
+📈 **Trend:** {'Kritisch - Viele Maschinen nahe Werkzeugende' if avg_rul < 50 else 'Stabil - Ausreichende Pufferzeit vorhanden'}
+                """
 
-                    Zustand: {row['KI_Zustand']}
+            # ==================================
+            # 5. Gesamtstatus / Übersicht
+            # ==================================
+            elif any(keyword in frage for keyword in [
+                "gesamtstatus", "übersicht", "status aller", "fabrikstatus",
+                "wie viele maschinen", "anzahl maschinen", "systemstatus"
+            ]):
 
-                    Confidence: {row['Confidence']:.2f}
+                gesamt = len(fleet)
+                laufend = len(fleet[fleet['KI_Zustand'] == 'OK'])
+                warnung = len(fleet[fleet['KI_Zustand'] == 'WARNUNG'])
+                kritisch_zustand = len(fleet[fleet['KI_Zustand'] == 'KRITISCH'])
 
-                    RUL: {row['RUL_min']} min
+                antwort = f"""
+🏭 **Fabrik-Übersicht**
 
-                    Logistische Vorlaufzeit:
-                    {row['Logistische_Vorlaufzeit_min']} min
+| Status | Anzahl | Prozent |
+|--------|--------|---------|
+| **Gesamtmaschinen** | {gesamt} | 100% |
+| ✅ Normal (OK) | {laufend} | {laufend/gesamt*100:.1f}% |
+| ⚠️ Warnung | {warnung} | {warnung/gesamt*100:.1f}% |
+| 🚨 Kritisch | {kritisch_zustand} | {kritisch_zustand/gesamt*100:.1f}% |
 
-                    Entscheidung:
-                    {row['Entscheidung']}
+🔧 **Aktive Logistik-Prozesse:** {len(fleet[fleet['Entscheidung'] == 'AUTO_AUFTRAG'])}
+📦 **Ersatzwerkzeuge im Transport:** {len(fleet[fleet['Entscheidung'] == 'TRANSPORT'])}
+                """
 
-                    Risiko-Score:
-                    {row['Risk_Score']}
-                    """)
+            # ==================================
+            # 6. Vergleich Traditionell vs. Prädiktiv
+            # ==================================
+            elif any(keyword in frage for keyword in [
+                "vergleich", "traditionell", "prädiktiv", "kpi",
+                "unterschied", "vorteil", "einsparung"
+            ]):
 
-                    gefunden = True
-                    break
+                # حسابات افتراضية للمقارنة - يمكن ربطها ببيانات حقيقية
+                downtime_trad = 45  # دقيقة
+                downtime_pred = 12  # دقيقة
+                ersparnis = downtime_trad - downtime_pred
 
-            if not gefunden:
+                antwort = f"""
+📈 **KPI-Vergleich: Traditionell vs. Prädiktiv**
 
-                st.info("""
-                Frage nicht erkannt.
+| KPI | Traditionell | Prädiktiv | Verbesserung |
+|-----|--------------|-----------|--------------|
+| **Ungeplante Ausfallzeit** | {downtime_trad} min | {downtime_pred} min | -{ersparnis/downtime_trad*100:.0f}% |
+| **Nottransporte** | Hoch | Minimal | -85% |
+| **Werkzeugnutzung** | 75% | 92% | +17% |
+| **Logistik-Reaktionszeit** | 30 min | 5 min | -83% |
 
-                Beispiele:
+💰 **Geschätzte Einsparung pro Monat:** {ersparnis * 24 * 30:.0f} Minuten Maschinenlaufzeit
+                """
 
-                - Welche Maschine hat das höchste Risiko?
-                - Wie viele kritische Maschinen gibt es?
-                - Wie viele Auto-Aufträge existieren?
-                - Wie hoch ist die durchschnittliche RUL?
-                - Informationen über Maschine M07
-                - Status von M12
-                """)
+            # ==================================
+            # 7. Maschinenabfrage (Spezifisch)
+            # ==================================
+            else:
+
+                gefunden = False
+                antwort = ""
+
+                # البحث عن رقم الآلة (M01, M02, ...) أو الاسم الكامل
+                import re
+                maschinen_pattern = re.findall(r'm\d+', frage)
+                
+                if maschinen_pattern:
+                    # البحث باستخدام الأنماط الم encontrada
+                    for pattern in maschinen_pattern:
+                        machine_name = pattern.upper()
+                        maschine_rows = fleet[fleet["Maschine"].str.upper() == machine_name]
+                        
+                        if not maschine_rows.empty:
+                            row = maschine_rows.iloc[0]
+                            
+                            # تحديد لون الحالة
+                            if row['KI_Zustand'] == 'OK':
+                                status_emoji = '✅'
+                            elif row['KI_Zustand'] == 'WARNUNG':
+                                status_emoji = '⚠️'
+                            else:
+                                status_emoji = '🚨'
+
+                            antwort = f"""
+{status_emoji} **Detailinformation: Maschine {row['Maschine']}**
+
+| Attribut | Wert |
+|----------|------|
+| **Werkzeug-ID** | {row['Werkzeug_ID']} |
+| **KI-Zustand** | {row['KI_Zustand']} |
+| **Confidence** | {row['Confidence']:.2%} |
+| **RUL (Restlebensdauer)** | {row['RUL_min']} min |
+| **Logistische Vorlaufzeit** | {row['Logistische_Vorlaufzeit_min']} min |
+| **Entscheidung** | `{row['Entscheidung']}` |
+| **Risiko-Score** | {row['Risk_Score']:.2f} |
+
+🎯 **Prognose:** {'Werkzeugwechsel in Kürze erforderlich' if row['RUL_min'] < row['Logistische_Vorlaufzeit_min'] else 'Ausreichende Pufferzeit vorhanden'}
+                            "
+                            gefunden = True
+                            break
+
+                # البحث باستخدام الأسماء الموجودة في قائمة الآلات
+                if not gefunden:
+                    for machine in fleet["Maschine"]:
+                        if machine.lower() in frage:
+                            row = fleet[fleet["Maschine"] == machine].iloc[0]
+                            
+                            if row['KI_Zustand'] == 'OK':
+                                status_emoji = '✅'
+                            elif row['KI_Zustand'] == 'WARNUNG':
+                                status_emoji = '⚠️'
+                            else:
+                                status_emoji = '🚨'
+
+                            antwort = f"""
+{status_emoji} **Detailinformation: Maschine {row['Maschine']}**
+
+| Attribut | Wert |
+|----------|------|
+| **Werkzeug-ID** | {row['Werkzeug_ID']} |
+| **KI-Zustand** | {row['KI_Zustand']} |
+| **Confidence** | {row['Confidence']:.2%} |
+| **RUL (Restlebensdauer)** | {row['RUL_min']} min |
+| **Logistische Vorlaufzeit** | {row['Logistische_Vorlaufzeit_min']} min |
+| **Entscheidung** | `{row['Entscheidung']}` |
+| **Risiko-Score** | {row['Risk_Score']:.2f} |
+
+🎯 **Prognose:** {'Werkzeugwechsel in Kürze erforderlich' if row['RUL_min'] < row['Logistische_Vorlaufzeit_min'] else 'Ausreichende Pufferzeit vorhanden'}
+                            "
+                            gefunden = True
+                            break
+
+                # ==================================
+                # 8. Hilfe / Nicht erkannt
+                # ==================================
+                if not gefunden:
+
+                    # قائمة جميع الآلات المتاحة
+                    alle_maschinen = ", ".join(fleet["Maschine"].tolist())
+
+                    antwort = f"""
+❓ **Frage nicht erkannt oder keine passenden Daten gefunden.**
+
+**Verfügbare Maschinen:** {alle_maschinen}
+
+**Beispiele für gültige Fragen:**
+
+🔍 **Zustandsabfragen:**
+- *Welche Maschine hat das höchste Risiko?*
+- *Wie viele kritische Maschinen gibt es?*
+- *Gib mir den Gesamtstatus der Fabrik*
+
+📦 **Logistik:**
+- *Wie viele Auto-Aufträge existieren?*
+- *Zeige alle automatischen Bestellungen*
+
+📊 **Analysen:**
+- *Wie hoch ist die durchschnittliche RUL?*
+- *Vergleich Traditionell vs. Prädiktiv*
+- *Informationen über Maschine M07*
+- *Status von M12*
+
+💡 **Tipp:** Sie können Maschinennamen direkt eingeben (z.B. "M05", "Maschine M03")
+                    "
+
+        # ============================================
+        # عرض الرد وحفظه في السجل
+        # ============================================
+        with st.chat_message("assistant"):
+            st.markdown(antwort)
+
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": antwort
+        })
+
+        # ============================================
+        # زر مسح المحادثة
+        # ============================================
+        if st.button("🗑️ Chat-Verlauf löschen", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
