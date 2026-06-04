@@ -1986,11 +1986,10 @@ with tab8:
 | **Logistische Vorlaufzeit** | {row['Logistische_Vorlaufzeit_min']} min |
 | **Entscheidung** | `{row['Entscheidung']}` |
 | **Risiko-Score** | {row['Risk_Score']:.2f} |
-
 🎯 **Prognose:** {'Werkzeugwechsel in Kürze erforderlich' if row['RUL_min'] < row['Logistische_Vorlaufzeit_min'] else 'Ausreichende Pufferzeit vorhanden'}
-                            "
-                            gefunden = True
-                            break
+ "
+ gefunden = True
+ break
 
                 # ==================================
                 # 8. Hilfe / Nicht erkannt
