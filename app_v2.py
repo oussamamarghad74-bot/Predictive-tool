@@ -108,7 +108,18 @@ st.set_page_config(
     page_icon="🏭",
     layout="wide"
 )
+import time
 
+if "last_update" not in st.session_state:
+    st.session_state.last_update = time.time()
+
+if time.time() - st.session_state.last_update > 30:
+    st.session_state.last_update = time.time()
+    st.rerun()
+
+st.sidebar.caption(
+    f"🔄 Live Update alle 30s | {time.strftime('%H:%M:%S')}"
+)
 
 # =========================================================
 # Custom CSS Design
