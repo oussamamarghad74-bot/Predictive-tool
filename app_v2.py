@@ -964,24 +964,24 @@ with st.spinner("KI-Modell wird trainiert und Fabrikzustand wird simuliert..."):
         seed=int(seed) + 700
     )
     if demo_mode:
-    fleet.loc[0, "Maschine"] = "M07"
-    fleet.loc[0, "Werkzeug_ID"] = "T-482"
-    fleet.loc[0, "Werkzeugtyp"] = "Sonderwerkzeug"
-    fleet.loc[0, "Material"] = "Titan"
-    fleet.loc[0, "KI_Zustand"] = "Critical"
-    fleet.loc[0, "Confidence"] = 0.91
-    fleet.loc[0, "RUL_min"] = 24.0
-    fleet.loc[0, "Lager_min"] = 5.0
-    fleet.loc[0, "Voreinstellung_min"] = 14.0
-    fleet.loc[0, "AGV_Wartezeit_min"] = 4.0
-    fleet.loc[0, "Transport_min"] = 6.0
-    fleet.loc[0, "Sicherheitsmarge_min"] = 5.0
-    fleet.loc[0, "Bestandsverzug_min"] = 0.0
-    fleet.loc[0, "Logistische_Vorlaufzeit_min"] = 34.0
-    fleet.loc[0, "Bestand_OK"] = True
-    fleet.loc[0, "Entscheidung"] = "AUTO_AUFTRAG"
-    fleet.loc[0, "Risk_Score"] = 88.0
-    fleet = fleet.sort_values(["Priorität_Rang", "Risk_Score"], ascending=[True, False]).reset_index(drop=True)
+        fleet.loc[0, "Maschine"] = "M07"
+        fleet.loc[0, "Werkzeug_ID"] = "T-482"
+        fleet.loc[0, "Werkzeugtyp"] = "Sonderwerkzeug"
+        fleet.loc[0, "Material"] = "Titan"
+        fleet.loc[0, "KI_Zustand"] = "Critical"
+        fleet.loc[0, "Confidence"] = 0.91
+        fleet.loc[0, "RUL_min"] = 24.0
+        fleet.loc[0, "Lager_min"] = 5.0
+        fleet.loc[0, "Voreinstellung_min"] = 14.0
+        fleet.loc[0, "AGV_Wartezeit_min"] = 4.0
+        fleet.loc[0, "Transport_min"] = 6.0
+        fleet.loc[0, "Sicherheitsmarge_min"] = 5.0
+        fleet.loc[0, "Bestandsverzug_min"] = 0.0
+        fleet.loc[0, "Logistische_Vorlaufzeit_min"] = 34.0
+        fleet.loc[0, "Bestand_OK"] = True
+        fleet.loc[0, "Entscheidung"] = "AUTO_AUFTRAG"
+        fleet.loc[0, "Risk_Score"] = 88.0
+        fleet = fleet.sort_values(["Priorität_Rang", "Risk_Score"], ascending=[True, False]).reset_index(drop=True)
 
 # =========================================================
 # Global KPIs
