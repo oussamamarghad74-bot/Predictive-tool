@@ -1297,7 +1297,156 @@ with tab3:
 
     cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
     st.dataframe(cm_df, use_container_width=True)
+    st.markdown("---")
+st.subheader("🎵 Digital Twin Soundtrack – Akustischer Fingerabdruck")
 
+st.info("""
+Jede CNC-Maschine hat eine einzigartige akustische Signatur im Healthy-Zustand.
+Das System vergleicht das aktuelle Signal mit dieser Baseline und erkennt 
+Abweichungen automatisch – unabhängig vom KI-Modell.
+""")
+
+# توليد البصمة الأساسية (Healthy)
+baseline_audio = generate_tool_sound(
+    state="Healthy",
+    rpm=audio_row["RPM"],
+    teeth=audio_row["Zähne"],
+    material_hardness=audio_row["Materialhärte"],
+    machine_size=audio_row["Maschinengröße"],
+    factory_noise=0.02,  # ضوضاء منخفضة للبصمة
+    coolant=True,
+    seed=int(seed) + 9999
+)
+
+baseline_features = learn_acoustic_fingerprint(
+    audio_row["Maschine"], 
+    baseline_audio
+)
+
+current_features = extract_features(audio)
+deviation_pct, deviation_status = compare_to_fingerprint(
+    audio_row["Maschine"], 
+    current_features
+)
+
+col_f1, col_f2, col_f3 = st.columns(3)
+
+with col_f1:
+    kpi_card(
+        "Akustische Abweichung", 
+        f"{deviation_pct}%", 
+        deviation_status,
+        "#ef4444" if deviation_pct > 35 else "#22c55e"
+    )
+
+with col_f2:
+    kpi_card(
+        "Baseline Status",
+        "✅ Gelernt",
+        f"Maschine {audio_row['Maschine']}",
+        "#38bdf8"
+    )
+
+with col_f3:
+    kpi_card(
+        "Fingerabdruck",
+        "Aktiv",
+        f"seit {pd.Timestamp.now().strftime('%H:%M')}",
+        "#a855f7"
+    )
+
+# مقارنة بصرية بين البصمة الأساسية والصوت الحالي
+st.subheader("Baseline vs. Aktuelles Signal")
+
+fig_compare, axes = plt.subplots(1, 2, figsize=(12, 2.8))
+fig_compare.patch.set_facecolor("#111827")
+
+for ax in axes:
+    ax.set_facecolor("#111827")
+    ax.tick_params(colors="white")
+    ax.grid(True, alpha=0.2)
+
+time_axis = np.arange(len(baseline_audio)) / SR
+
+axes[0].plot(time_axis, baseline_audio, color="#22c55e", linewidth=0.8)
+axes[0].set_title("Baseline (Healthy)", color="white")
+axes[0].set_xlabel("Zeit [s]", color="white")
+axes[0].set_ylabel("Amplitude", color="white")
+
+axes[1].plot(time_axis, audio, color="#ef4444", linewidth=0.8)
+axes[1].set_title(f"Aktuell ({audio_row['Ist_Zustand']})", color="white")
+axes[1].set_xlabel("Zeit [s]", color="white")
+axes[1].set_ylabel("Amplitude", color="white")
+
+plt.tight_layout()
+st.pyplot(fig_compare)
+
+# رسم الانحراف لكل الآلات
+st.subheader("Akustische Abweichung – Alle Maschinen")
+
+deviation_data = []
+for _, row in fleet.iterrows():
+    temp_audio = generate_tool_sound(
+        state=row["Ist_Zustand"],
+        rpm=row["RPM"],
+        teeth=row["Zähne"],
+        material_hardness=row["Materialhärte"],
+        machine_size=row["Maschinengröße"],
+        factory_noise=global_noise,
+        coolant=True,
+        seed=int(seed) + int(row.name) * 7
+    )
+    
+    temp_baseline = generate_tool_sound(
+        state="Healthy",
+        rpm=row["RPM"],
+        teeth=row["Zähne"],
+        material_hardness=row["Materialhärte"],
+        machine_size=row["Maschinengröße"],
+        factory_noise=0.02,
+        coolant=True,
+        seed=int(seed) + 9999
+    )
+    
+    learn_acoustic_fingerprint(row["Maschine"], temp_baseline)
+    temp_features = extract_features(temp_audio)
+    dev, status = compare_to_fingerprint(row["Maschine"], temp_features)
+    
+    deviation_data.append({
+        "Maschine": row["Maschine"],
+        "Abweichung_%": dev,
+        "Status": status,
+        "Zustand": row["Ist_Zustand"]
+    })
+
+dev_df = pd.DataFrame(deviation_data)
+
+fig_dev = px.bar(
+    dev_df,
+    x="Maschine",
+    y="Abweichung_%",
+    color="Zustand",
+    color_discrete_map=STATE_COLORS,
+    title="Akustische Fingerabdruck-Abweichung pro Maschine",
+    text="Abweichung_%"
+)
+
+fig_dev.add_hline(
+    y=35, 
+    line_dash="dash", 
+    line_color="#ef4444",
+    annotation_text="Kritische Schwelle",
+    annotation_font_color="#ef4444"
+)
+
+fig_dev.update_layout(
+    paper_bgcolor="#111827",
+    plot_bgcolor="#0f172a",
+    font=dict(color="white"),
+    height=400
+)
+
+st.plotly_chart(fig_dev, use_container_width=True)
 
 # =========================================================
 # Tab 4: Logistics Control
