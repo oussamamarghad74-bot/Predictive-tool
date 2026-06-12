@@ -1406,8 +1406,7 @@ with right:
         st.dataframe(logistics_df, use_container_width=True, hide_index=True)
 st.markdown("---")
 decision = selected["Entscheidung"]
-
-    if decision == "AUTO_AUFTRAG":
+if decision == "AUTO_AUFTRAG":
         st.success("Automatischer Werkzeugbereitstellungsauftrag wurde erzeugt.")
     elif decision == "SOFORT_STOPP":
         st.error("Sofortiger Stopp empfohlen: Werkzeugzustand Replace und RUL kleiner als Vorlaufzeit.")
