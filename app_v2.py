@@ -1266,8 +1266,8 @@ st.dataframe(
 
 st.subheader("Entscheidungslegende")
 
-    legend_cols = st.columns(4)
-    decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
+legend_cols = st.columns(4)
+decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
                  "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"]
 
     for i, d in enumerate(decisions):
