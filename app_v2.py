@@ -1270,11 +1270,9 @@ legend_cols = st.columns(4)
 decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
                  "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"]
 
-    for i, d in enumerate(decisions):
-        with legend_cols[i % 4]:
-            st.markdown(badge(d, DECISION_COLORS[d]), unsafe_allow_html=True)
-
-
+for i, d in enumerate(decisions):
+with legend_cols[i % 4]:
+st.markdown(badge(d, DECISION_COLORS[d]), unsafe_allow_html=True)
 # =========================================================
 # Tab 2: Machine Detail
 # =========================================================
