@@ -1348,7 +1348,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 left, right = st.columns([1.1, 1])
-    with left:
+with left:
         st.subheader("Produktionsauftrag")
 
         info_df = pd.DataFrame({
