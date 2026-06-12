@@ -1408,18 +1408,16 @@ st.markdown("---")
 decision = selected["Entscheidung"]
 if decision == "AUTO_AUFTRAG":
         st.success("Automatischer Werkzeugbereitstellungsauftrag wurde erzeugt.")
-    elif decision == "SOFORT_STOPP":
+elif decision == "SOFORT_STOPP":
         st.error("Sofortiger Stopp empfohlen: Werkzeugzustand Replace und RUL kleiner als Vorlaufzeit.")
-    elif decision == "BEDIENER_FREIGABE":
+elif decision == "BEDIENER_FREIGABE":
         st.warning("Werkzeugbereitstellung empfohlen, aber Bedienerfreigabe erforderlich.")
-    elif decision == "BESTANDSRISIKO":
+elif decision == "BESTANDSRISIKO":
         st.error("Bestandsrisiko: Ersatzwerkzeug ist nicht direkt verfügbar. Sonderbeschaffung oder Priorisierung notwendig.")
-    elif decision == "VORWARNUNG":
+elif decision == "VORWARNUNG":
         st.info("Vorwarnung: Noch kein Auftrag notwendig, aber logistische Vorbereitung empfohlen.")
-    else:
+else:
         st.info("Monitoring: Werkzeug kann weiterlaufen.")
-
-
 # =========================================================
 # Tab 3: Audio and AI
 # =========================================================
