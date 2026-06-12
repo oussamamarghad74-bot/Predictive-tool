@@ -1255,9 +1255,99 @@ with tab2:
         kpi_card("Entscheidung", selected["Entscheidung"], f"Risk Score {selected['Risk_Score']}", DECISION_COLORS[selected["Entscheidung"]])
 
     st.markdown("---")
+    
+machine_info = MACHINE_REGISTRY.get(selected_machine, {})
+sensor_data = get_sensor_reading(
+    machine_id=selected_machine,
+    state=selected["Ist_Zustand"],
+    rpm=selected["RPM"],
+    seed=int(seed) + hash(selected_machine) % 1000
+)
 
-    left, right = st.columns([1.1, 1])
+st.markdown(f"""
+<div style="background:linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            border:1px solid #334155; border-radius:16px; 
+            padding:18px; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; 
+                align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+            <div style="font-size:11px; color:#64748b; 
+                        letter-spacing:2px; margin-bottom:4px;">
+                MASCHINEN-IDENTITÄT
+            </div>
+            <div style="font-size:22px; font-weight:800; color:white;">
+                {machine_info.get('name', selected_machine)}
+            </div>
+            <div style="color:#94a3b8; font-size:13px;">
+                {machine_info.get('typ', '')} | 
+                {machine_info.get('zelle', '')} | 
+                Baujahr {machine_info.get('baujahr', '')}
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div style="font-size:11px; color:#64748b; margin-bottom:4px;">
+                SENSOR ID
+            </div>
+            <div style="font-family:monospace; color:#38bdf8; font-size:14px;">
+                {sensor_data['sensor_id']}
+            </div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">
+                Messung #{sensor_data['messung_nr']}
+            </div>
+            <div style="color:#64748b; font-size:11px;">
+                {sensor_data['timestamp']}
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">🌡️ Temperatur</div>
+            <div style="font-size:20px; font-weight:700; color:#f59e0b;">
+                {sensor_data['temperatur_c']}°C
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">📳 Vibration</div>
+            <div style="font-size:20px; font-weight:700; color:#a855f7;">
+                {sensor_data['vibration_mm_s']} mm/s
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">⚡ Spindelstrom</div>
+            <div style="font-size:20px; font-weight:700; color:#38bdf8;">
+                {sensor_data['spindelstrom_a']} A
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">🔊 Audio RMS</div>
+            <div style="font-size:20px; font-weight:700; color:#22c55e;">
+                {sensor_data['audio_rms']}
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">❄️ Kühlmittel</div>
+            <div style="font-size:20px; font-weight:700; color:#06b6d4;">
+                {sensor_data['kuehlmittel_temp_c']}°C
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
+                    padding:10px 16px; min-width:120px;">
+            <div style="font-size:11px; color:#64748b;">👤 Bediener</div>
+            <div style="font-size:16px; font-weight:700; color:white;">
+                {machine_info.get('bediener', '-')}
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
+left, right = st.columns([1.1, 1])
     with left:
         st.subheader("Produktionsauftrag")
 
