@@ -1252,19 +1252,19 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 st.plotly_chart(factory_map(fleet), use_container_width=True)
 st.subheader("Priorisierte Maschinenliste")
-    display_cols = [
+display_cols = [
         "Maschine", "Zelle", "Maschinentyp", "Werkzeug_ID", "Werkzeugtyp",
         "Material", "KI_Zustand", "Confidence", "RUL_min",
         "Logistische_Vorlaufzeit_min", "Entscheidung", "Risk_Score"
     ]
 
-    st.dataframe(
+st.dataframe(
         fleet[display_cols],
         use_container_width=True,
         height=420
     )
 
-    st.subheader("Entscheidungslegende")
+st.subheader("Entscheidungslegende")
 
     legend_cols = st.columns(4)
     decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
