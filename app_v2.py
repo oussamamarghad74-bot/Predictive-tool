@@ -1251,7 +1251,6 @@ with col_live4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 st.plotly_chart(factory_map(fleet), use_container_width=True)
-    st.plotly_chart(factory_map(fleet), use_container_width=True)
 
     st.subheader("Priorisierte Maschinenliste")
 
