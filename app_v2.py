@@ -1405,8 +1405,7 @@ with right:
 
         st.dataframe(logistics_df, use_container_width=True, hide_index=True)
 st.markdown("---")
-
-    decision = selected["Entscheidung"]
+decision = selected["Entscheidung"]
 
     if decision == "AUTO_AUFTRAG":
         st.success("Automatischer Werkzeugbereitstellungsauftrag wurde erzeugt.")
