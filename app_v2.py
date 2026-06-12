@@ -57,6 +57,74 @@ DECISION_COLORS = {
 }
 
 # =========================================================
+# FertigungsTech GmbH – Virtuelle Fabrik
+# =========================================================
+
+FACTORY_INFO = {
+    "name": "FertigungsTech GmbH",
+    "werk": "Werk 1 – München",
+    "adresse": "Industriestraße 47, 80339 München",
+    "schichten": ["Frühschicht 06:00–14:00", "Spätschicht 14:00–22:00", "Nachtschicht 22:00–06:00"],
+    "gegruendet": "2008",
+    "mitarbeiter": 347,
+    "zertifikate": ["ISO 9001:2015", "DIN EN 13849", "VDI 2853"]
+}
+
+MACHINE_REGISTRY = {
+    "M01": {"name": "DMG MORI DMU 50",     "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle A", "bediener": "K. Weber",   "sensor_id": "SNS-2024-M01-ACC", "baujahr": 2019},
+    "M02": {"name": "HAAS VF-4",           "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle A", "bediener": "T. Müller",  "sensor_id": "SNS-2024-M02-ACC", "baujahr": 2020},
+    "M03": {"name": "Mazak VARIAXIS i-700","typ": "5-Achs-Bearbeitungszentrum","zelle": "Zelle A","bediener": "F. Schmidt", "sensor_id": "SNS-2024-M03-ACC", "baujahr": 2021},
+    "M04": {"name": "DMG MORI NLX 2500",   "typ": "CNC-Drehmaschine",       "zelle": "Zelle A", "bediener": "R. Bauer",   "sensor_id": "SNS-2024-M04-ACC", "baujahr": 2018},
+    "M05": {"name": "Trumpf TruLaser 3030","typ": "Laserschneidanlage",      "zelle": "Zelle A", "bediener": "M. Klein",   "sensor_id": "SNS-2024-M05-ACC", "baujahr": 2022},
+    "M06": {"name": "HAAS ST-30",          "typ": "CNC-Drehmaschine",       "zelle": "Zelle A", "bediener": "S. Hoffmann","sensor_id": "SNS-2024-M06-ACC", "baujahr": 2020},
+    "M07": {"name": "Hermle C 400",        "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle B", "bediener": "A. Fischer", "sensor_id": "SNS-2024-M07-ACC", "baujahr": 2021},
+    "M08": {"name": "Mazak INTEGREX i-400","typ": "Dreh-Fräszentrum",       "zelle": "Zelle B", "bediener": "P. Wagner",  "sensor_id": "SNS-2024-M08-ACC", "baujahr": 2019},
+    "M09": {"name": "DMG MORI CTX 450",    "typ": "CNC-Drehmaschine",       "zelle": "Zelle B", "bediener": "L. Braun",   "sensor_id": "SNS-2024-M09-ACC", "baujahr": 2020},
+    "M10": {"name": "HAAS VF-6",           "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle B", "bediener": "J. Schulz",  "sensor_id": "SNS-2024-M10-ACC", "baujahr": 2022},
+    "M11": {"name": "Okuma GENOS M460V",   "typ": "Bearbeitungszentrum",    "zelle": "Zelle B", "bediener": "C. Richter", "sensor_id": "SNS-2024-M11-ACC", "baujahr": 2021},
+    "M12": {"name": "Mazak QT-PRIMOS 150", "typ": "CNC-Drehmaschine",       "zelle": "Zelle B", "bediener": "H. Wolf",    "sensor_id": "SNS-2024-M12-ACC", "baujahr": 2018},
+    "M13": {"name": "DMG MORI DMU 65",     "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle C", "bediener": "G. Neumann", "sensor_id": "SNS-2024-M13-ACC", "baujahr": 2022},
+    "M14": {"name": "FANUC Robodrill",     "typ": "Bohrzentrum",            "zelle": "Zelle C", "bediener": "D. Schwarz", "sensor_id": "SNS-2024-M14-ACC", "baujahr": 2020},
+    "M15": {"name": "Heller MCH 250",      "typ": "Horizontal-Bearbeitungszentrum","zelle": "Zelle C","bediener": "E. Zimmermann","sensor_id": "SNS-2024-M15-ACC", "baujahr": 2019},
+    "M16": {"name": "DMG MORI NHX 4000",   "typ": "Horizontal-Fräszentrum", "zelle": "Zelle C", "bediener": "B. Krause",  "sensor_id": "SNS-2024-M16-ACC", "baujahr": 2021},
+    "M17": {"name": "Waldrich Coburg",     "typ": "Schwerzerspanung",       "zelle": "Zelle D", "bediener": "N. Hartmann","sensor_id": "SNS-2024-M17-ACC", "baujahr": 2017},
+    "M18": {"name": "TOS WHQ 13",          "typ": "Waagerecht-Bohrwerk",    "zelle": "Zelle D", "bediener": "O. Lange",   "sensor_id": "SNS-2024-M18-ACC", "baujahr": 2016},
+    "M19": {"name": "Skoda W 200",         "typ": "Schwerzerspanung",       "zelle": "Zelle D", "bediener": "V. Köhler",  "sensor_id": "SNS-2024-M19-ACC", "baujahr": 2018},
+    "M20": {"name": "Forest-Liné Axia",    "typ": "Portalfräsmaschine",     "zelle": "Zelle D", "bediener": "I. Maier",   "sensor_id": "SNS-2024-M20-ACC", "baujahr": 2020},
+    "M21": {"name": "DMG MORI DMU 210P",   "typ": "Portal-Fräszentrum",     "zelle": "Zelle D", "bediener": "U. Fuchs",   "sensor_id": "SNS-2024-M21-ACC", "baujahr": 2021},
+    "M22": {"name": "Starrag STC 1250",    "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle D", "bediener": "Q. Peters",  "sensor_id": "SNS-2024-M22-ACC", "baujahr": 2022},
+    "M23": {"name": "HAAS VF-12",          "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle D", "bediener": "X. Frank",   "sensor_id": "SNS-2024-M23-ACC", "baujahr": 2019},
+    "M24": {"name": "Mazak HCN-6800",      "typ": "Horizontal-Bearbeitungszentrum","zelle": "Zelle D","bediener": "Y. Berg","sensor_id": "SNS-2024-M24-ACC", "baujahr": 2020},
+}
+
+def get_current_shift():
+    hour = pd.Timestamp.now().hour
+    if 6 <= hour < 14:
+        return "Frühschicht 06:00–14:00"
+    elif 14 <= hour < 22:
+        return "Spätschicht 14:00–22:00"
+    else:
+        return "Nachtschicht 22:00–06:00"
+
+def get_sensor_reading(machine_id, state, rpm, seed=0):
+    rng = np.random.default_rng(seed)
+    
+    base_temp = {"Healthy": 52, "Warning": 67, "Critical": 81, "Replace": 94}
+    base_vib  = {"Healthy": 0.42, "Warning": 0.78, "Critical": 1.24, "Replace": 1.87}
+    base_amp  = {"Healthy": 10.2, "Warning": 12.8, "Critical": 15.4, "Replace": 18.9}
+    
+    return {
+        "sensor_id": MACHINE_REGISTRY.get(machine_id, {}).get("sensor_id", "SNS-UNKNOWN"),
+        "timestamp": pd.Timestamp.now().strftime("%d.%m.%Y – %H:%M:%S"),
+        "messung_nr": int(rng.integers(4000, 9999)),
+        "temperatur_c": round(base_temp[state] + rng.normal(0, 2.5), 1),
+        "vibration_mm_s": round(base_vib[state] + rng.normal(0, 0.08), 2),
+        "spindelstrom_a": round(base_amp[state] + rng.normal(0, 0.6), 1),
+        "drehzahl_rpm": rpm,
+        "kuehlmittel_temp_c": round(28.5 + rng.normal(0, 1.2), 1),
+        "audio_rms": round(0.03 + SEVERITY[state] * 0.025 + rng.uniform(0, 0.01), 3)
+    }
+# =========================================================
 # Digital Twin Soundtrack - Acoustic Fingerprint
 # =========================================================
 
