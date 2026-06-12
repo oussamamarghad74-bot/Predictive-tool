@@ -1404,8 +1404,7 @@ with right:
         })
 
         st.dataframe(logistics_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
+st.markdown("---")
 
     decision = selected["Entscheidung"]
 
