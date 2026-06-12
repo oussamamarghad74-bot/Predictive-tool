@@ -1375,8 +1375,7 @@ with left:
         })
 
         st.dataframe(info_df, use_container_width=True, hide_index=True)
-
-    with right:
+with right:
         st.subheader("Werkzeuglogistische Bewertung")
 
         logistics_df = pd.DataFrame({
