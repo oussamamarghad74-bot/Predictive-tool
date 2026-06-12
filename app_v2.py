@@ -1200,7 +1200,57 @@ with tab1:
     Die Farbe entspricht der logistischen Entscheidung.
     </div>
     """, unsafe_allow_html=True)
+# Live Feed Header
+col_live1, col_live2, col_live3, col_live4 = st.columns(4)
 
+with col_live1:
+    st.markdown(f"""
+    <div style="background:rgba(34,197,94,0.1); border:1px solid #22c55e;
+                border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-size:11px; color:#64748b;">🏭 WERK</div>
+        <div style="font-size:16px; font-weight:700; color:white;">
+            {FACTORY_INFO['werk']}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_live2:
+    st.markdown(f"""
+    <div style="background:rgba(56,189,248,0.1); border:1px solid #38bdf8;
+                border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-size:11px; color:#64748b;">🕐 SCHICHT</div>
+        <div style="font-size:16px; font-weight:700; color:white;">
+            {get_current_shift().split()[0]}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_live3:
+    active_sensors = len(fleet)
+    st.markdown(f"""
+    <div style="background:rgba(168,85,247,0.1); border:1px solid #a855f7;
+                border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-size:11px; color:#64748b;">📡 SENSOREN AKTIV</div>
+        <div style="font-size:16px; font-weight:700; color:white;">
+            {active_sensors} / {active_sensors}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_live4:
+    st.markdown(f"""
+    <div style="background:rgba(245,158,11,0.1); border:1px solid #f59e0b;
+                border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-size:11px; color:#64748b;">📍 STANDORT</div>
+        <div style="font-size:16px; font-weight:700; color:white;">
+            München, DE
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+st.plotly_chart(factory_map(fleet), use_container_width=True)
     st.plotly_chart(factory_map(fleet), use_container_width=True)
 
     st.subheader("Priorisierte Maschinenliste")
