@@ -998,11 +998,54 @@ def simulate_kpis(n_events=180, seed=42):
 # Header
 # =========================================================
 
-st.markdown("""
+current_shift = get_current_shift()
+now_str = pd.Timestamp.now().strftime("%d.%m.%Y – %H:%M:%S")
+
+st.markdown(f"""
 <div class="hero">
-    <div class="hero-title">🏭 Predictive Tool Logistics Control Tower</div>
-    <div class="hero-subtitle">
-        KI-gestützte akustische Werkzeugzustandserkennung mit automatischer Werkzeugbereitstellung in der CNC-Fertigung
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+            <div style="font-size:13px; color:#93c5fd; font-weight:600; 
+                        letter-spacing:2px; margin-bottom:6px;">
+                ⚙️ INDUSTRIE 4.0 – PREDICTIVE MANUFACTURING
+            </div>
+            <div class="hero-title">
+                🏭 FertigungsTech GmbH – Werk 1
+            </div>
+            <div class="hero-subtitle">
+                Predictive Tool Logistics Control Tower | München
+            </div>
+            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
+                <span style="background:rgba(34,197,94,0.2); border:1px solid #22c55e; 
+                             padding:4px 12px; border-radius:999px; font-size:12px; color:#22c55e;">
+                    📡 Sensor Network: AKTIV
+                </span>
+                <span style="background:rgba(56,189,248,0.2); border:1px solid #38bdf8; 
+                             padding:4px 12px; border-radius:999px; font-size:12px; color:#38bdf8;">
+                    🕐 {current_shift}
+                </span>
+                <span style="background:rgba(168,85,247,0.2); border:1px solid #a855f7; 
+                             padding:4px 12px; border-radius:999px; font-size:12px; color:#a855f7;">
+                    🔄 Live: {now_str}
+                </span>
+                <span style="background:rgba(245,158,11,0.2); border:1px solid #f59e0b; 
+                             padding:4px 12px; border-radius:999px; font-size:12px; color:#f59e0b;">
+                    ✅ ISO 9001:2015 Zertifiziert
+                </span>
+            </div>
+        </div>
+        <div style="text-align:right; color:#94a3b8; font-size:12px; min-width:200px;">
+            <div style="font-size:28px; font-weight:800; color:white;">
+                FTG
+            </div>
+            <div>FertigungsTech GmbH</div>
+            <div>Industriestraße 47</div>
+            <div>80339 München</div>
+            <div style="margin-top:6px; color:#64748b;">
+                Gegründet {FACTORY_INFO['gegruendet']} | 
+                {FACTORY_INFO['mitarbeiter']} Mitarbeiter
+            </div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
