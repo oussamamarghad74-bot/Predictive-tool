@@ -2485,332 +2485,123 @@ with tab8:
 # Tab 9: KI-Chat
 # =========================================================
 with tab9:
+    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
 
-    st.header("🤖 KI Chat Assistant")
+    st.markdown("""
+    <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
+                border:1px solid #6366f1; border-radius:12px; padding:12px;
+                margin-bottom:16px;">
+        <div style="color:#a5b4fc; font-size:13px;">
+            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
+            alle aktuellen Maschinendaten von FertigungsTech GmbH.
+            Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ============================================
-    # تخزين سجل المحادثة في حالة الجلسة
-    # ============================================
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # عرض سجل المحادثة السابق
+    # بناء ملخص بيانات المصنع
+    def build_factory_context():
+        kritisch = fleet[fleet["Entscheidung"].isin([
+            "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
+        ])]
+        
+        context = f"""
+Du bist der KI-Assistent des Predictive Tool Logistics Systems 
+der FertigungsTech GmbH – Werk 1, München.
+
+AKTUELLER FABRIKSTATUS:
+- Gesamtmaschinen: {len(fleet)}
+- Kritische Maschinen: {len(kritisch)}
+- Durchschnittliche RUL: {fleet['RUL_min'].mean():.1f} min
+- Risiko-Index: {fleet['Risk_Score'].sum():.0f}
+- Aktuelle Schicht: {get_current_shift()}
+
+KRITISCHE MASCHINEN:
+{kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
+
+ALLE MASCHINEN ÜBERSICHT:
+{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
+
+Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
+Sei präzise und professionell.
+        """
+        return context
+
+    # عرض سجل المحادثة
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # ============================================
     # حقل الإدخال
-    # ============================================
     frage = st.chat_input(
-        "Frage an das System eingeben...",
-        key="chat_input"
+        "Frage auf Deutsch, Englisch oder Arabisch...",
+        key="gemini_chat_input"
     )
 
     if frage:
-
-        # حفظ سؤال المستخدم
         st.session_state.chat_history.append({
             "role": "user",
             "content": frage
         })
 
-        frage_original = frage
-        frage = frage.lower().strip()
+        with st.chat_message("user"):
+            st.markdown(frage)
 
-        # ============================================
-        # التحقق من وجود البيانات أولاً
-        # ============================================
-        if fleet.empty:
-            antwort = "⚠️ **Fehler:** Keine Maschinendaten verfügbar. Bitte starten Sie die Simulation."
-            
-        elif not all(col in fleet.columns for col in [
-            "Maschine", "Risk_Score", "KI_Zustand", "Entscheidung",
-            "Werkzeug_ID", "Confidence", "RUL_min", "Logistische_Vorlaufzeit_min"
-        ]):
-            antwort = "⚠️ **Fehler:** Die Datenstruktur ist unvollständig. Erforderliche Spalten fehlen."
-            
-        else:
-
-            # ==================================
-            # 1. Höchstes Risiko
-            # ==================================
-            if any(keyword in frage for keyword in [
-                "höchste risiko", "risikoreichste", "größte gefahr",
-                "welche maschine hat das höchste risiko", "gefährlichste"
-            ]):
-
-                top = fleet.sort_values(
-                    "Risk_Score",
-                    ascending=False
-                ).iloc[0]
-
-                # ✅ الحل: بناء النص بشكل صحيح باستخدام f-string
-                antwort = (
-                    f"🚨 **Maschine mit höchstem Risiko**\n\n"
-                    f"| Attribut | Wert |\n"
-                    f"|----------|------|\n"
-                    f"| **Maschine** | {top['Maschine']} |\n"
-                    f"| **Risiko-Score** | {top['Risk_Score']:.2f} |\n"
-                    f"| **Zustand** | {top['KI_Zustand']} |\n"
-                    f"| **Werkzeug** | {top['Werkzeug_ID']} |\n"
-                    f"| **RUL** | {top['RUL_min']} min |\n"
-                    f"| **Entscheidung** | `{top['Entscheidung']}` |\n\n"
-                    f"💡 **Empfohlene Aktion:** Sofortige Überprüfung oder Werkzeugwechsel planen."
-                )
-
-            # ==================================
-            # 2. Kritische Maschinen
-            # ==================================
-            elif any(keyword in frage for keyword in [
-                "kritische", "gefährliche", "warnung", "probleme",
-                "wie viele kritische", "anzahl kritisch"
-            ]):
-
-                kritisch = fleet[
-                    fleet["Entscheidung"].isin([
-                        "SOFORT_STOPP",
-                        "AUTO_AUFTRAG",
-                        "BESTANDSRISIKO"
-                    ])
-                ]
-
-                if len(kritisch) == 0:
-                    antwort = "✅ **Gute Nachrichten:** Keine kritischen Maschinen vorhanden. Alle Systeme laufen normal."
-                else:
-                    tabelle = kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_markdown(index=False)
-                    
-                    antwort = (
-                        f"⚠️ **Kritische Maschinen: {len(kritisch)}**\n\n"
-                        f"{tabelle}\n\n"
-                        f"🔄 **Logistik-Status:** {'Aufträge werden automatisch ausgelöst' if 'AUTO_AUFTRAG' in kritisch['Entscheidung'].values else 'Manuelle Eingriffe erforderlich'}"
-                    )
-
-            # ==================================
-            # 3. Auto-Aufträge
-            # ==================================
-            elif any(keyword in frage for keyword in [
-                "auto-auftrag", "auto auftrag", "automatische aufträge",
-                "logistikaufträge", "bestellungen", "wie viele auto"
-            ]):
-
-                auto = fleet[fleet["Entscheidung"] == "AUTO_AUFTRAG"]
-
-                if len(auto) == 0:
-                    antwort = "📋 **Keine automatischen Aufträge** aktiv. Alle Werkzeuge haben ausreichende Restlebensdauer."
-                else:
-                    tabelle = auto[['Maschine', 'Werkzeug_ID', 'RUL_min', 'Logistische_Vorlaufzeit_min']].to_markdown(index=False)
-                    
-                    antwort = (
-                        f"📦 **Automatische Logistik-Aufträge: {len(auto)}**\n\n"
-                        f"{tabelle}\n\n"
-                        f"⏱️ **Durchschnittliche RUL dieser Aufträge:** {auto['RUL_min'].mean():.1f} min"
-                    )
-
-            # ==================================
-            # 4. Durchschnittliche RUL
-            # ==================================
-            elif any(keyword in frage for keyword in [
-                "durchschnittliche rul", "mittlere rul", "rul durchschnitt",
-                "wie hoch ist die rul", "rul im schnitt"
-            ]):
-
-                avg_rul = fleet['RUL_min'].mean()
-                min_rul = fleet['RUL_min'].min()
-                max_rul = fleet['RUL_min'].max()
-                kritisch_count = len(fleet[fleet['RUL_min'] < 30])
-
-                antwort = (
-                    f"📊 **RUL-Statistiken (Remaining Useful Life)**\n\n"
-                    f"| Metrik | Wert |\n"
-                    f"|--------|------|\n"
-                    f"| **Durchschnitt** | {avg_rul:.1f} min |\n"
-                    f"| **Minimum** | {min_rul:.1f} min |\n"
-                    f"| **Maximum** | {max_rul:.1f} min |\n"
-                    f"| **Maschinen mit RUL < 30min** | {kritisch_count} |\n\n"
-                    f"📈 **Trend:** {'Kritisch - Viele Maschinen nahe Werkzeugende' if avg_rul < 50 else 'Stabil - Ausreichende Pufferzeit vorhanden'}"
-                )
-
-            # ==================================
-            # 5. Gesamtstatus / Übersicht
-            # ==================================
-            elif any(keyword in frage for keyword in [
-                "gesamtstatus", "übersicht", "status aller", "fabrikstatus",
-                "wie viele maschinen", "anzahl maschinen", "systemstatus"
-            ]):
-
-                gesamt = len(fleet)
-                laufend = len(fleet[fleet['KI_Zustand'] == 'OK'])
-                warnung = len(fleet[fleet['KI_Zustand'] == 'WARNUNG'])
-                kritisch_zustand = len(fleet[fleet['KI_Zustand'] == 'KRITISCH'])
-                auto_auftraege = len(fleet[fleet['Entscheidung'] == 'AUTO_AUFTRAG'])
-                transport = len(fleet[fleet['Entscheidung'] == 'TRANSPORT'])
-
-                antwort = (
-                    f"🏭 **Fabrik-Übersicht**\n\n"
-                    f"| Status | Anzahl | Prozent |\n"
-                    f"|--------|--------|---------|\n"
-                    f"| **Gesamtmaschinen** | {gesamt} | 100% |\n"
-                    f"| ✅ Normal (OK) | {laufend} | {laufend/gesamt*100:.1f}% |\n"
-                    f"| ⚠️ Warnung | {warnung} | {warnung/gesamt*100:.1f}% |\n"
-                    f"| 🚨 Kritisch | {kritisch_zustand} | {kritisch_zustand/gesamt*100:.1f}% |\n\n"
-                    f"🔧 **Aktive Logistik-Prozesse:** {auto_auftraege}\n"
-                    f"📦 **Ersatzwerkzeuge im Transport:** {transport}"
-                )
-
-            # ==================================
-            # 6. Vergleich Traditionell vs. Prädiktiv
-            # ==================================
-            elif any(keyword in frage for keyword in [
-                "vergleich", "traditionell", "prädiktiv", "kpi",
-                "unterschied", "vorteil", "einsparung"
-            ]):
-
-                # حسابات افتراضية للمقارنة - يمكن ربطها ببيانات حقيقية
-                downtime_trad = 45  # دقيقة
-                downtime_pred = 12  # دقيقة
-                ersparnis = downtime_trad - downtime_pred
-
-                antwort = (
-                    f"📈 **KPI-Vergleich: Traditionell vs. Prädiktiv**\n\n"
-                    f"| KPI | Traditionell | Prädiktiv | Verbesserung |\n"
-                    f"|-----|--------------|-----------|--------------|\n"
-                    f"| **Ungeplante Ausfallzeit** | {downtime_trad} min | {downtime_pred} min | -{ersparnis/downtime_trad*100:.0f}% |\n"
-                    f"| **Nottransporte** | Hoch | Minimal | -85% |\n"
-                    f"| **Werkzeugnutzung** | 75% | 92% | +17% |\n"
-                    f"| **Logistik-Reaktionszeit** | 30 min | 5 min | -83% |\n\n"
-                    f"💰 **Geschätzte Einsparung pro Monat:** {ersparnis * 24 * 30:.0f} Minuten Maschinenlaufzeit"
-                )
-
-            # ==================================
-            # 7. Maschinenabfrage (Spezifisch)
-            # ==================================
-            else:
-
-                gefunden = False
-                antwort = ""
-
-                # البحث عن رقم الآلة (M01, M02, ...) أو الاسم الكامل
-                import re
-                maschinen_pattern = re.findall(r'm\d+', frage)
-                
-                if maschinen_pattern:
-                    # البحث باستخدام الأنماط الم وجودة
-                    for pattern in maschinen_pattern:
-                        machine_name = pattern.upper()
-                        maschine_rows = fleet[fleet["Maschine"].str.upper() == machine_name]
-                        
-                        if not maschine_rows.empty:
-                            row = maschine_rows.iloc[0]
-                            
-                            # تحديد لون الحالة
-                            if row['KI_Zustand'] == 'OK':
-                                status_emoji = '✅'
-                            elif row['KI_Zustand'] == 'WARNUNG':
-                                status_emoji = '⚠️'
-                            else:
-                                status_emoji = '🚨'
-
-                            prognose = (
-                                'Werkzeugwechsel in Kürze erforderlich' 
-                                if row['RUL_min'] < row['Logistische_Vorlaufzeit_min'] 
-                                else 'Ausreichende Pufferzeit vorhanden'
-                            )
-
-                            antwort = (
-                                f"{status_emoji} **Detailinformation: Maschine {row['Maschine']}**\n\n"
-                                f"| Attribut | Wert |\n"
-                                f"|----------|------|\n"
-                                f"| **Werkzeug-ID** | {row['Werkzeug_ID']} |\n"
-                                f"| **KI-Zustand** | {row['KI_Zustand']} |\n"
-                                f"| **Confidence** | {row['Confidence']:.2%} |\n"
-                                f"| **RUL (Restlebensdauer)** | {row['RUL_min']} min |\n"
-                                f"| **Logistische Vorlaufzeit** | {row['Logistische_Vorlaufzeit_min']} min |\n"
-                                f"| **Entscheidung** | `{row['Entscheidung']}` |\n"
-                                f"| **Risiko-Score** | {row['Risk_Score']:.2f} |\n\n"
-                                f"🎯 **Prognose:** {prognose}"
-                            )
-                            gefunden = True
-                            break
-
-                # البحث باستخدام الأسماء الموجودة في قائمة الآلات
-                if not gefunden:
-                    for machine in fleet["Maschine"]:
-                        if machine.lower() in frage:
-                            row = fleet[fleet["Maschine"] == machine].iloc[0]
-                            
-                            if row['KI_Zustand'] == 'OK':
-                                status_emoji = '✅'
-                            elif row['KI_Zustand'] == 'WARNUNG':
-                                status_emoji = '⚠️'
-                            else:
-                                status_emoji = '🚨'
-
-                            prognose = (
-                                'Werkzeugwechsel in Kürze erforderlich' 
-                                if row['RUL_min'] < row['Logistische_Vorlaufzeit_min'] 
-                                else 'Ausreichende Pufferzeit vorhanden'
-                            )
-
-                            antwort = (
-                                f"{status_emoji} **Detailinformation: Maschine {row['Maschine']}**\n\n"
-                                f"| Attribut | Wert |\n"
-                                f"|----------|------|\n"
-                                f"| **Werkzeug-ID** | {row['Werkzeug_ID']} |\n"
-                                f"| **KI-Zustand** | {row['KI_Zustand']} |\n"
-                                f"| **Confidence** | {row['Confidence']:.2%} |\n"
-                                f"| **RUL (Restlebensdauer)** | {row['RUL_min']} min |\n"
-                                f"| **Logistische Vorlaufzeit** | {row['Logistische_Vorlaufzeit_min']} min |\n"
-                                f"| **Entscheidung** | `{row['Entscheidung']}` |\n"
-                                f"| **Risiko-Score** | {row['Risk_Score']:.2f} |\n\n"
-                                f"🎯 **Prognose:** {prognose}"
-                            )
-                            gefunden = True
-                            break
-
-                # ==================================
-                # 8. Hilfe / Nicht erkannt
-                # ==================================
-                if not gefunden:
-
-                    # قائمة جميع الآلات المتاحة
-                    alle_maschinen = ", ".join(fleet["Maschine"].tolist())
-
-                    antwort = (
-                        f"❓ **Frage nicht erkannt oder keine passenden Daten gefunden.**\n\n"
-                        f"**Verfügbare Maschinen:** {alle_maschinen}\n\n"
-                        f"**Beispiele für gültige Fragen:**\n\n"
-                        f"🔍 **Zustandsabfragen:**\n"
-                        f"- *Welche Maschine hat das höchste Risiko?*\n"
-                        f"- *Wie viele kritische Maschinen gibt es?*\n"
-                        f"- *Gib mir den Gesamtstatus der Fabrik*\n\n"
-                        f"📦 **Logistik:**\n"
-                        f"- *Wie viele Auto-Aufträge existieren?*\n"
-                        f"- *Zeige alle automatischen Bestellungen*\n\n"
-                        f"📊 **Analysen:**\n"
-                        f"- *Wie hoch ist die durchschnittliche RUL?*\n"
-                        f"- *Vergleich Traditionell vs. Prädiktiv*\n"
-                        f"- *Informationen über Maschine M07*\n"
-                        f"- *Status von M12*\n\n"
-                        f"💡 **Tipp:** Sie können Maschinennamen direkt eingeben (z.B. 'M05', 'Maschine M03')"
-                    )
-
-        # ============================================
-        # عرض الرد وحفظه في السجل
-        # ============================================
         with st.chat_message("assistant"):
-            st.markdown(antwort)
+            with st.spinner("Gemini AI analysiert..."):
+                try:
+                    import requests
+
+                    factory_context = build_factory_context()
+
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+                    payload = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {
+                                        "text": f"{factory_context}\n\nFrage: {frage}"
+                                    }
+                                ]
+                            }
+                        ],
+                        "generationConfig": {
+                            "temperature": 0.7,
+                            "maxOutputTokens": 1000
+                        }
+                    }
+
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        timeout=15
+                    )
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                    else:
+                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
+
+                except Exception as e:
+                    antwort = f"⚠️ Verbindungsfehler: {str(e)}"
+
+                st.markdown(antwort)
 
         st.session_state.chat_history.append({
             "role": "assistant",
             "content": antwort
         })
 
-    # ============================================
-    # زر مسح المحادثة (خارج شرط if frage)
-    # ============================================
+    # زر مسح المحادثة
     col_chat, col_clear = st.columns([4, 1])
-with col_clear:
-    if st.button("🗑️ Löschen", key="clear_chat"):
-        st.session_state.chat_history = []
-        st.rerun()
+    with col_clear:
+        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
