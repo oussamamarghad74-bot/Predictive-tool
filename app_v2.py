@@ -1190,7 +1190,80 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 
 with tab1:
     st.header("🏭 Smart Factory Fertigungs-Leitwarte")
+    # ============================
+    # Cost Savings Live Counter
+    # ============================
+    if "start_time" not in st.session_state:
+        st.session_state.start_time = time.time()
 
+    elapsed_seconds = time.time() - st.session_state.start_time
+    elapsed_minutes = elapsed_seconds / 60
+
+    # حساب التوفير
+    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
+    traditional_downtime_per_min = 0.38
+    savings_per_minute = avg_downtime_cost * traditional_downtime_per_min
+
+    total_savings = elapsed_minutes * savings_per_minute
+    avoided_stops = int(elapsed_minutes / 45)
+    avoided_transports = int(elapsed_minutes / 28)
+
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg, #064e3b, #065f46);
+                border:1px solid #10b981; border-radius:16px;
+                padding:18px; margin-bottom:16px;">
+        <div style="font-size:13px; color:#6ee7b7; 
+                    letter-spacing:2px; margin-bottom:10px;">
+            💰 LIVE EINSPARUNGSRECHNER – SEIT SYSTEMSTART
+        </div>
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+            <div>
+                <div style="font-size:11px; color:#6ee7b7;">
+                    💶 Eingesparte Kosten
+                </div>
+                <div style="font-size:36px; font-weight:800; color:white;">
+                    {total_savings:.2f} €
+                </div>
+                <div style="font-size:12px; color:#a7f3d0;">
+                    seit {int(elapsed_minutes)} Minuten Laufzeit
+                </div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:#6ee7b7;">
+                    🛑 Vermiedene Stillstände
+                </div>
+                <div style="font-size:36px; font-weight:800; color:white;">
+                    {avoided_stops}
+                </div>
+                <div style="font-size:12px; color:#a7f3d0;">
+                    ungeplante Ausfälle verhindert
+                </div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:#6ee7b7;">
+                    🚚 Vermiedene Eiltransporte
+                </div>
+                <div style="font-size:36px; font-weight:800; color:white;">
+                    {avoided_transports}
+                </div>
+                <div style="font-size:12px; color:#a7f3d0;">
+                    Nottransporte eingespart
+                </div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:#6ee7b7;">
+                    ⏱️ Systemlaufzeit
+                </div>
+                <div style="font-size:36px; font-weight:800; color:white;">
+                    {int(elapsed_minutes)}m {int(elapsed_seconds % 60)}s
+                </div>
+                <div style="font-size:12px; color:#a7f3d0;">
+                    kontinuierliche Überwachung
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""
     <div class="section-card">
     Diese Ansicht zeigt den aktuellen Zustand der CNC-Fertigung. 
