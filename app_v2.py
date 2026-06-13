@@ -1173,9 +1173,9 @@ with col5:
 # =========================================================
 # Tabs
 # =========================================================
-
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "🏭 Control Tower",
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "🏭 Fertigungs-Leitwarte",
+    "🔗 Domino Effekt",
     "🔍 Maschinen-Detail",
     "🎧 Audio & KI Analyse",
     "🚚 Logistik-Leitstand",
@@ -1184,14 +1184,12 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🤖 AI Assistant",
     "🤖 KI-Chat"
 ])
-
-
 # =========================================================
 # Tab 1: Control Tower
 # =========================================================
 
 with tab1:
-    st.header("🏭 Smart Factory Control Tower")
+    st.header("🏭 Smart Factory Fertigungs-Leitwarte")
 
     st.markdown("""
     <div class="section-card">
