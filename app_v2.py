@@ -1257,16 +1257,16 @@ with tab1:
         "Logistische_Vorlaufzeit_min", "Entscheidung", "Risk_Score"
     ]
 
-   st.dataframe(
+    st.dataframe(
         fleet[display_cols],
         use_container_width=True,
         height=420
     )
 
-   st.subheader("Entscheidungslegende")
+    st.subheader("Entscheidungslegende")
 
-   legend_cols = st.columns(4)
-   decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
+    legend_cols = st.columns(4)
+    decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
                  "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"]
 
 for i, d in enumerate(decisions):
