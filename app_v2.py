@@ -1539,9 +1539,9 @@ with tab2:
         </div>
         """, unsafe_allow_html=True)
 # =========================================================
-# Tab 2: Machine Detail
+# Tab 3: Machine Detail
 # =========================================================
-with tab2:
+with tab3:
     st.header("🔍 Maschinen-Detailansicht")
 
     selected_machine = st.selectbox(
@@ -1717,10 +1717,10 @@ with tab2:
         st.info("Monitoring: Werkzeug kann weiterlaufen.")
 
 # =========================================================
-# Tab 3: Audio and AI
+# Tab 4: Audio and AI
 # =========================================================
 
-with tab3:
+with tab4:
     st.header("🎧 Akustische Werkzeuganalyse und KI-Klassifikation")
 
     selected_audio_machine = st.selectbox(
@@ -1953,10 +1953,10 @@ fig_dev.update_layout(
 st.plotly_chart(fig_dev, use_container_width=True)
 
 # =========================================================
-# Tab 4: Logistics Control
+# Tab 5: Logistics Control
 # =========================================================
 
-with tab4:
+with tab5:
     st.header("🚚 Logistik-Leitstand: Werkzeuglager, Voreinstellung und AGV/FTS")
 
     order_filter = fleet[fleet["Entscheidung"].isin([
@@ -2083,10 +2083,10 @@ with tab4:
 
 
 # =========================================================
-# Tab 5: KPI Simulation
+# Tab 6: KPI Simulation
 # =========================================================
 
-with tab5:
+with tab6:
     st.header("📊 KPI Simulation: Traditionell vs. Predictive Tool Logistics")
 
     kpi_events = st.slider("Anzahl simulierter Werkzeugereignisse", 50, 500, 180, 10)
@@ -2177,10 +2177,10 @@ with tab5:
 
 
 # =========================================================
-# Tab 6: Architecture and Pitch
+# Tab 7: Architecture and Pitch
 # =========================================================
 
-with tab6:
+with tab7:
     st.header("🧩 Architektur, Innovationskern und Präsentations-Pitch")
 
     st.subheader("Systemarchitektur")
@@ -2279,10 +2279,10 @@ Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
 
     st.dataframe(risks, use_container_width=True, hide_index=True)
 # =========================================================
-# Tab 7: KI-Entscheidungsassistent
+# Tab 8: KI-Entscheidungsassistent
 # =========================================================
 
-with tab7:
+with tab8:
 
     st.header("🧠 KI-Entscheidungsassistent")
 
@@ -2403,9 +2403,9 @@ with tab7:
                 "Keine kritischen Maschinen erkannt."
             )
 # =========================================================
-# Tab 8: KI-Chat
+# Tab 9: KI-Chat
 # =========================================================
-with tab8:
+with tab9:
 
     st.header("🤖 KI Chat Assistant")
 
