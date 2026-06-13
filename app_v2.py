@@ -2559,29 +2559,30 @@ Sei präzise und professionell.
 
                     factory_context = build_factory_context()
 
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
 
                     payload = {
                         "contents": [
-                            {
-                                "parts": [
-                                    {
-                                        "text": f"{factory_context}\n\nFrage: {frage}"
-                                    }
-                                ]
-                            }
+                           {
+                                  "parts": [
+                                       {
+                                            "text": f"{factory_context}\n\nFrage: {frage}"
+                                       }
+                                  ]
+                           }
                         ],
                         "generationConfig": {
-                            "temperature": 0.7,
-                            "maxOutputTokens": 1000
+                              "temperature": 0.7,
+                              "maxOutputTokens": 1000
                         }
-                    }
+                   }
 
                     response = requests.post(
-                        url,
-                        json=payload,
-                        timeout=15
-                    )
+                       url,
+                       json=payload,
+                       params={"key": GEMINI_API_KEY},
+                       timeout=15
+                   )
 
                     if response.status_code == 200:
                         data = response.json()
