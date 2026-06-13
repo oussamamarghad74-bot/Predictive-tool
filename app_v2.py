@@ -1193,13 +1193,13 @@ with tab1:
     # ============================
     # Cost Savings Live Counter
     # ============================
-   if "start_time" not in st.session_state:
+    if "start_time" not in st.session_state:
     st.session_state.start_time = time.time()
 
-   if "last_update" not in st.session_state:
+    if "last_update" not in st.session_state:
     st.session_state.last_update = time.time()
 
-   if time.time() - st.session_state.last_update > 30:
+    if time.time() - st.session_state.last_update > 30:
     st.session_state.last_update = time.time()
     st.rerun()
     elapsed_seconds = time.time() - st.session_state.start_time
