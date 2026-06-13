@@ -2559,7 +2559,7 @@ Sei präzise und professionell.
 
                     factory_context = build_factory_context()
 
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key={GEMINI_API_KEY}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
 
                     payload = {
                         "contents": [
