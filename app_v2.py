@@ -1271,6 +1271,274 @@ for i, d in enumerate(decisions):
     with legend_cols[i % 4]:
         st.markdown(badge(d, DECISION_COLORS[d]), unsafe_allow_html=True)
 # =========================================================
+# Tab 2: Domino Effekt
+# =========================================================
+
+def calculate_domino_effect(fleet_df, failed_machine):
+    """
+    حساب تأثير توقف آلة على باقي الآلات
+    """
+    failed = fleet_df[fleet_df["Maschine"] == failed_machine].iloc[0]
+    affected = []
+
+    for _, row in fleet_df.iterrows():
+        if row["Maschine"] == failed_machine:
+            continue
+
+        impact_score = 0
+        reasons = []
+
+        # نفس الزelle
+        if row["Zelle"] == failed["Zelle"]:
+            impact_score += 35
+            reasons.append("Gleiche Fertigungszelle")
+
+        # نفس نوع الأداة
+        if row["Werkzeugtyp"] == failed["Werkzeugtyp"]:
+            impact_score += 25
+            reasons.append("Gleicher Werkzeugtyp")
+
+        # نفس المادة
+        if row["Material"] == failed["Material"]:
+            impact_score += 15
+            reasons.append("Gleiches Material")
+
+        # RUL منخفض
+        if row["RUL_min"] < 40:
+            impact_score += 20
+            reasons.append("Kritische RUL")
+
+        # تكاليف توقف عالية
+        if row["Stillstandskosten_EUR_min"] > 150:
+            impact_score += 10
+            reasons.append("Hohe Stillstandskosten")
+
+        if impact_score > 0:
+            affected.append({
+                "Maschine": row["Maschine"],
+                "Zelle": row["Zelle"],
+                "Werkzeugtyp": row["Werkzeugtyp"],
+                "KI_Zustand": row["KI_Zustand"],
+                "RUL_min": row["RUL_min"],
+                "Impact_Score": impact_score,
+                "Gründe": " | ".join(reasons),
+                "Stillstandskosten_EUR_min": row["Stillstandskosten_EUR_min"]
+            })
+
+    return pd.DataFrame(affected).sort_values(
+        "Impact_Score", ascending=False
+    ).reset_index(drop=True)
+
+
+with tab2:
+    st.header("🔗 Domino Effekt Analyse")
+
+    st.markdown("""
+    <div class="section-card">
+    Wenn eine CNC-Maschine ausfällt, analysiert dieses System automatisch,
+    welche anderen Maschinen davon betroffen sein könnten.
+    Dies ermöglicht eine proaktive Planung bevor der Dominoeffekt eintritt.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # اختيار الآلة
+    domino_machine = st.selectbox(
+        "Simuliere Ausfall von Maschine:",
+        fleet["Maschine"].tolist(),
+        index=0,
+        key="domino_select"
+    )
+
+    domino_row = fleet[fleet["Maschine"] == domino_machine].iloc[0]
+    machine_info_d = MACHINE_REGISTRY.get(domino_machine, {})
+
+    # بطاقة الآلة المتوقفة
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg, #7f1d1d, #dc2626);
+                border-radius:16px; padding:18px; margin:12px 0;">
+        <div style="font-size:13px; color:#fca5a5; margin-bottom:4px;">
+            ⚠️ SIMULIERTER MASCHINENAUSFALL
+        </div>
+        <div style="font-size:24px; font-weight:800; color:white;">
+            {domino_machine} – {machine_info_d.get('name', '')}
+        </div>
+        <div style="color:#fca5a5; font-size:13px;">
+            {machine_info_d.get('typ', '')} | 
+            {domino_row['Zelle']} | 
+            Werkzeug: {domino_row['Werkzeug_ID']} | 
+            Zustand: {domino_row['KI_Zustand']}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # حساب التأثير
+    domino_df = calculate_domino_effect(fleet, domino_machine)
+
+    if domino_df.empty:
+        st.success("✅ Keine anderen Maschinen direkt betroffen.")
+    else:
+        # KPIs
+        col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+
+        total_cost = domino_df["Stillstandskosten_EUR_min"].sum()
+        high_impact = len(domino_df[domino_df["Impact_Score"] >= 50])
+        avg_impact = domino_df["Impact_Score"].mean()
+        same_cell = len(domino_df[domino_df["Zelle"] == domino_row["Zelle"]])
+
+        with col_d1:
+            kpi_card(
+                "Betroffene Maschinen",
+                len(domino_df),
+                "direkt beeinflusst",
+                "#ef4444"
+            )
+        with col_d2:
+            kpi_card(
+                "Hohes Risiko",
+                high_impact,
+                "Impact Score ≥ 50",
+                "#f59e0b"
+            )
+        with col_d3:
+            kpi_card(
+                "Gleiche Zelle",
+                same_cell,
+                "kritischste Abhängigkeit",
+                "#7c3aed"
+            )
+        with col_d4:
+            kpi_card(
+                "Gesamtkosten-Risiko",
+                f"{total_cost} €/min",
+                "bei Kettenreaktion",
+                "#dc2626"
+            )
+
+        st.markdown("---")
+
+        # جدول التأثير
+        col_left, col_right = st.columns([1.2, 1])
+
+        with col_left:
+            st.subheader("🔴 Betroffene Maschinen nach Priorität")
+            st.dataframe(
+                domino_df[[
+                    "Maschine", "Zelle", "KI_Zustand",
+                    "RUL_min", "Impact_Score", "Gründe"
+                ]],
+                use_container_width=True,
+                height=380,
+                hide_index=True
+            )
+
+        with col_right:
+            st.subheader("📊 Impact Score Verteilung")
+            fig_domino = px.bar(
+                domino_df.head(10),
+                x="Maschine",
+                y="Impact_Score",
+                color="KI_Zustand",
+                color_discrete_map=STATE_COLORS,
+                title="Domino Impact Score pro Maschine",
+                text="Impact_Score"
+            )
+            fig_domino.add_hline(
+                y=50,
+                line_dash="dash",
+                line_color="#ef4444",
+                annotation_text="Kritische Schwelle",
+                annotation_font_color="#ef4444"
+            )
+            fig_domino.update_layout(
+                paper_bgcolor="#111827",
+                plot_bgcolor="#0f172a",
+                font=dict(color="white"),
+                height=380
+            )
+            st.plotly_chart(fig_domino, use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("🗺️ Domino Effekt auf Fabrikkarte")
+
+        # خريطة تظهر الآلات المتأثرة
+        fig_map_domino = go.Figure()
+
+        affected_machines = domino_df["Maschine"].tolist()
+
+        for _, row in fleet.iterrows():
+            if row["Maschine"] == domino_machine:
+                color = "#dc2626"
+                size = 45
+                symbol = "x"
+            elif row["Maschine"] in affected_machines:
+                impact = domino_df[
+                    domino_df["Maschine"] == row["Maschine"]
+                ]["Impact_Score"].values[0]
+                color = "#f59e0b" if impact >= 50 else "#fbbf24"
+                size = 30
+                symbol = "circle"
+            else:
+                color = "#22c55e"
+                size = 20
+                symbol = "circle"
+
+            fig_map_domino.add_trace(go.Scatter(
+                x=[row["X"]],
+                y=[row["Y"]],
+                mode="markers+text",
+                text=[row["Maschine"]],
+                textposition="top center",
+                marker=dict(
+                    size=size,
+                    color=color,
+                    symbol=symbol,
+                    line=dict(color="white", width=1.5)
+                ),
+                hovertemplate=(
+                    f"<b>{row['Maschine']}</b><br>"
+                    f"Zustand: {row['KI_Zustand']}<br>"
+                    f"RUL: {row['RUL_min']} min<extra></extra>"
+                ),
+                showlegend=False
+            ))
+
+        fig_map_domino.update_layout(
+            title=f"Domino Effekt – Ausfall von {domino_machine}",
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white"),
+            height=480,
+            xaxis=dict(
+                showgrid=True,
+                gridcolor="#334155",
+                title="Layout X"
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor="#334155",
+                title="Layout Y"
+            )
+        )
+
+        st.plotly_chart(fig_map_domino, use_container_width=True)
+
+        # تفسير
+        st.markdown(f"""
+        <div style="background:rgba(220,38,38,0.1); border:1px solid #dc2626;
+                    border-radius:12px; padding:16px; margin-top:8px;">
+            <div style="font-weight:700; color:#ef4444; margin-bottom:8px;">
+                🔴 Domino-Analyse: Ausfall von {domino_machine}
+            </div>
+            <div style="color:#e5e7eb; font-size:14px;">
+                Bei einem Ausfall von <b>{domino_machine}</b> sind 
+                <b>{len(domino_df)} Maschinen</b> direkt betroffen.
+                Das Gesamtkostenrisiko beträgt <b>{total_cost} €/min</b>.
+                <b>{high_impact} Maschinen</b> haben einen kritischen Impact Score über 50
+                und müssen sofort überwacht werden.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+# =========================================================
 # Tab 2: Machine Detail
 # =========================================================
 with tab2:
