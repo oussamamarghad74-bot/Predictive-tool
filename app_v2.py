@@ -1940,7 +1940,95 @@ with tab3:
             ]
         })
         st.dataframe(logistics_df, use_container_width=True, hide_index=True)
+    st.markdown("---")
+    st.subheader("📈 Live Gauge Monitor")
 
+    sensor = get_sensor_reading(
+        machine_id=selected_machine,
+        state=selected["Ist_Zustand"],
+        rpm=selected["RPM"],
+        seed=int(time.time() / 5)
+    )
+
+    g1, g2, g3, g4 = st.columns(4)
+
+    def make_gauge(title, value, min_val, max_val, unit, color):
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=value,
+            title={"text": title, "font": {"color": "white", "size": 14}},
+            number={"suffix": unit, "font": {"color": "white", "size": 20}},
+            gauge={
+                "axis": {
+                    "range": [min_val, max_val],
+                    "tickcolor": "white"
+                },
+                "bar": {"color": color},
+                "bgcolor": "#1e293b",
+                "bordercolor": "#334155",
+                "steps": [
+                    {"range": [min_val, max_val * 0.5], "color": "#064e3b"},
+                    {"range": [max_val * 0.5, max_val * 0.75], "color": "#78350f"},
+                    {"range": [max_val * 0.75, max_val], "color": "#7f1d1d"}
+                ],
+                "threshold": {
+                    "line": {"color": "#ef4444", "width": 3},
+                    "thickness": 0.75,
+                    "value": max_val * 0.75
+                }
+            }
+        ))
+        fig.update_layout(
+            paper_bgcolor="#111827",
+            font=dict(color="white"),
+            height=200,
+            margin=dict(l=20, r=20, t=40, b=10)
+        )
+        return fig
+
+    with g1:
+        st.plotly_chart(
+            make_gauge(
+                "🌡️ Temperatur",
+                sensor["temperatur_c"],
+                0, 120, "°C",
+                "#f59e0b"
+            ),
+            use_container_width=True
+        )
+
+    with g2:
+        st.plotly_chart(
+            make_gauge(
+                "📳 Vibration",
+                sensor["vibration_mm_s"],
+                0, 3.0, " mm/s",
+                "#a855f7"
+            ),
+            use_container_width=True
+        )
+
+    with g3:
+        st.plotly_chart(
+            make_gauge(
+                "⚡ Spindelstrom",
+                sensor["spindelstrom_a"],
+                0, 25, " A",
+                "#38bdf8"
+            ),
+            use_container_width=True
+        )
+
+    with g4:
+        st.plotly_chart(
+            make_gauge(
+                "⏱️ RUL",
+                selected["RUL_min"],
+                0, 100, " min",
+                "#22c55e"
+            ),
+            use_container_width=True
+        )
     st.markdown("---")
 
     decision = selected["Entscheidung"]
