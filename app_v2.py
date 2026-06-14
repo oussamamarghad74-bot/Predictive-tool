@@ -1333,7 +1333,7 @@ with col5:
 # =========================================================
 # Tabs
 # =========================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "🏭 Fertigungs-Leitwarte",
     "🔗 Domino Effekt",
     "🔍 Maschinen-Detail",
@@ -1343,7 +1343,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🧩 Architektur & Pitch",
     "🤖 AI Assistant",
     "🤖 KI-Chat",
-    "📄 Schichtbericht"
+    "📄 Schichtbericht",
+    "📅 Wartungskalender"
 ])
 # =========================================================
 # Tab 1: Control Tower
@@ -3081,4 +3082,167 @@ KI-Modell: Random Forest + Gemini AI
         data=bericht_text,
         file_name=f"Schichtbericht_{now.strftime('%Y%m%d_%H%M')}.txt",
         mime="text/plain"
+    )
+# =========================================================
+# Tab 11: Predictive Maintenance Calendar
+# =========================================================
+
+with tab11:
+    st.header("📅 Predictiver Wartungskalender")
+
+    st.markdown("""
+    <div style="background:linear-gradient(135deg, #1e3a8a, #1e293b);
+                border:1px solid #3b82f6; border-radius:12px; padding:14px;
+                margin-bottom:16px;">
+        <div style="color:#93c5fd; font-size:13px;">
+            📅 Basierend auf der aktuellen RUL jeder Maschine berechnet 
+            das System automatisch, wann jede Maschine eine neue 
+            Werkzeugwechsel benötigt.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # حساب تواريخ الصيانة المستقبلية
+    now = pd.Timestamp.now()
+
+    calendar_data = []
+    for _, row in fleet.iterrows():
+        machine_info = MACHINE_REGISTRY.get(row["Maschine"], {})
+        
+        # وقت الصيانة المتوقع
+        maintenance_time = now + pd.Timedelta(minutes=float(row["RUL_min"]))
+        
+        # تحديد الأولوية
+        if row["RUL_min"] < 30:
+            priority = "🚨 Kritisch"
+            color = "#ef4444"
+        elif row["RUL_min"] < 60:
+            priority = "⚠️ Dringend"
+            color = "#f59e0b"
+        elif row["RUL_min"] < 90:
+            priority = "🔔 Bald"
+            color = "#6366f1"
+        else:
+            priority = "✅ Normal"
+            color = "#22c55e"
+
+        calendar_data.append({
+            "Maschine": row["Maschine"],
+            "Name": machine_info.get("name", ""),
+            "Zelle": row["Zelle"],
+            "Werkzeug": row["Werkzeug_ID"],
+            "RUL_min": row["RUL_min"],
+            "Wartung_um": maintenance_time.strftime("%d.%m.%Y %H:%M"),
+            "Priorität": priority,
+            "Farbe": color,
+            "Bediener": machine_info.get("bediener", "-")
+        })
+
+    cal_df = pd.DataFrame(calendar_data).sort_values(
+        "RUL_min", ascending=True
+    ).reset_index(drop=True)
+
+    # KPIs
+    kritisch_count = len(cal_df[cal_df["RUL_min"] < 30])
+    dringend_count = len(cal_df[(cal_df["RUL_min"] >= 30) & (cal_df["RUL_min"] < 60)])
+    bald_count = len(cal_df[(cal_df["RUL_min"] >= 60) & (cal_df["RUL_min"] < 90)])
+    normal_count = len(cal_df[cal_df["RUL_min"] >= 90])
+
+    col_k1, col_k2, col_k3, col_k4 = st.columns(4)
+    with col_k1:
+        kpi_card("🚨 Kritisch", kritisch_count, "< 30 min", "#ef4444")
+    with col_k2:
+        kpi_card("⚠️ Dringend", dringend_count, "30-60 min", "#f59e0b")
+    with col_k3:
+        kpi_card("🔔 Bald", bald_count, "60-90 min", "#6366f1")
+    with col_k4:
+        kpi_card("✅ Normal", normal_count, "> 90 min", "#22c55e")
+
+    st.markdown("---")
+
+    # Timeline Chart
+    st.subheader("⏱️ Wartungs-Timeline")
+
+    fig_cal = go.Figure()
+
+    for i, row in cal_df.iterrows():
+        fig_cal.add_trace(go.Bar(
+            x=[row["RUL_min"]],
+            y=[f"{row['Maschine']} – {row['Name']}"],
+            orientation="h",
+            marker=dict(color=row["Farbe"]),
+            text=f"{row['RUL_min']} min | {row['Wartung_um']}",
+            textposition="inside",
+            hovertemplate=(
+                f"<b>{row['Maschine']}</b><br>"
+                f"Werkzeug: {row['Werkzeug']}<br>"
+                f"RUL: {row['RUL_min']} min<br>"
+                f"Wartung um: {row['Wartung_um']}<br>"
+                f"Bediener: {row['Bediener']}<extra></extra>"
+            ),
+            showlegend=False
+        ))
+
+    fig_cal.add_vline(
+        x=30,
+        line_dash="dash",
+        line_color="#ef4444",
+        annotation_text="🚨 Kritisch",
+        annotation_font_color="#ef4444"
+    )
+
+    fig_cal.add_vline(
+        x=60,
+        line_dash="dash",
+        line_color="#f59e0b",
+        annotation_text="⚠️ Dringend",
+        annotation_font_color="#f59e0b"
+    )
+
+    fig_cal.update_layout(
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=600,
+        xaxis=dict(
+            title="Verbleibende Zeit [min]",
+            gridcolor="#334155",
+            color="white"
+        ),
+        yaxis=dict(
+            gridcolor="#334155",
+            color="white"
+        ),
+        title=dict(
+            text="Wartungsplan – Alle Maschinen nach RUL sortiert",
+            font=dict(color="white")
+        )
+    )
+
+    st.plotly_chart(fig_cal, use_container_width=True)
+
+    st.markdown("---")
+
+    # جدول التقويم الكامل
+    st.subheader("📋 Vollständiger Wartungsplan")
+
+    display_cal = cal_df[[
+        "Priorität", "Maschine", "Name", "Zelle",
+        "Werkzeug", "RUL_min", "Wartung_um", "Bediener"
+    ]]
+
+    st.dataframe(
+        display_cal,
+        use_container_width=True,
+        hide_index=True,
+        height=400
+    )
+
+    # زر تنزيل
+    csv_data = display_cal.to_csv(index=False)
+    st.download_button(
+        label="📥 Wartungsplan herunterladen",
+        data=csv_data,
+        file_name=f"Wartungsplan_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
+        mime="text/csv"
     )
