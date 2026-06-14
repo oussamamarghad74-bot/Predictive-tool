@@ -1989,6 +1989,8 @@ with tab4:
 
     st.audio(audio_to_wav_bytes(audio), format="audio/wav")
     # Live Signal Visualizer
+if st.button("🔄 Signal aktualisieren", key="refresh_signal"):
+    st.rerun()
 st.subheader("📡 Live Signal Monitor")
 
 # أخذ جزء صغير من الصوت يتغير مع الوقت
