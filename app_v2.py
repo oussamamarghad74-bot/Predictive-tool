@@ -1988,6 +1988,71 @@ with tab4:
     st.subheader(f"Audiosignal von {audio_row['Maschine']} – Werkzeug {audio_row['Werkzeug_ID']}")
 
     st.audio(audio_to_wav_bytes(audio), format="audio/wav")
+    # Live Signal Visualizer
+st.subheader("📡 Live Signal Monitor")
+
+# أخذ جزء صغير من الصوت يتغير مع الوقت
+live_seed = int(time.time() / 5)
+rng_signal = np.random.default_rng(live_seed)
+
+window_start = int(rng_signal.integers(0, len(audio) - SR))
+window = audio[window_start:window_start + SR]
+
+time_axis = np.linspace(0, 1, len(window))
+
+fig_live = go.Figure()
+
+fig_live.add_trace(go.Scatter(
+    x=time_axis,
+    y=window,
+    mode="lines",
+    line=dict(
+        color=STATE_COLORS[audio_row["KI_Zustand"]],
+        width=1.2
+    ),
+    name="Live Signal"
+))
+
+fig_live.add_hline(
+    y=0.5,
+    line_dash="dash",
+    line_color="#ef4444",
+    annotation_text="⚠️ Kritische Schwelle",
+    annotation_font_color="#ef4444"
+)
+
+fig_live.add_hline(
+    y=-0.5,
+    line_dash="dash",
+    line_color="#ef4444"
+)
+
+fig_live.update_layout(
+    paper_bgcolor="#111827",
+    plot_bgcolor="#0f172a",
+    font=dict(color="white"),
+    height=200,
+    margin=dict(l=20, r=20, t=30, b=20),
+    xaxis=dict(
+        showgrid=True,
+        gridcolor="#334155",
+        title="Zeit [s]",
+        color="white"
+    ),
+    yaxis=dict(
+        showgrid=True,
+        gridcolor="#334155",
+        title="Amplitude",
+        color="white",
+        range=[-1.2, 1.2]
+    ),
+    title=dict(
+        text=f"🔴 LIVE | {audio_row['Maschine']} – {audio_row['Werkzeug_ID']} | Zustand: {audio_row['KI_Zustand']}",
+        font=dict(color="white", size=13)
+    )
+)
+
+st.plotly_chart(fig_live, use_container_width=True)
 
     col1, col2 = st.columns(2)
 
