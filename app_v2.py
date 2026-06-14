@@ -1333,7 +1333,7 @@ with col5:
 # =========================================================
 # Tabs
 # =========================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🏭 Fertigungs-Leitwarte",
     "🔗 Domino Effekt",
     "🔍 Maschinen-Detail",
@@ -1342,7 +1342,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📊 KPI Simulation",
     "🧩 Architektur & Pitch",
     "🤖 AI Assistant",
-    "🤖 KI-Chat"
+    "🤖 KI-Chat",
+    "📄 Schichtbericht"
 ])
 # =========================================================
 # Tab 1: Control Tower
@@ -2924,3 +2925,160 @@ Sei präzise und professionell.
         if st.button("🗑️ Löschen", key="clear_gemini_chat"):
             st.session_state.chat_history = []
             st.rerun()
+# =========================================================
+# Tab 10: Schichtbericht
+# =========================================================
+
+with tab10:
+    st.header("📄 Automatischer Schichtbericht")
+
+    st.markdown("""
+    <div style="background:linear-gradient(135deg, #1e3a8a, #1e293b);
+                border:1px solid #3b82f6; border-radius:12px; padding:14px;
+                margin-bottom:16px;">
+        <div style="color:#93c5fd; font-size:13px;">
+            📋 Das System generiert automatisch einen vollständigen 
+            Schichtbericht basierend auf den aktuellen Maschinendaten.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # معلومات الوردية
+    current_shift = get_current_shift()
+    now = pd.Timestamp.now()
+
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        kpi_card("Aktuelle Schicht", current_shift.split()[0], 
+                current_shift, "#38bdf8")
+    with col_s2:
+        kpi_card("Datum", now.strftime("%d.%m.%Y"),
+                now.strftime("%H:%M:%S Uhr"), "#22c55e")
+    with col_s3:
+        kpi_card("Werk", "Werk 1 – München",
+                "FertigungsTech GmbH", "#a855f7")
+
+    st.markdown("---")
+
+    # إحصائيات الوردية
+    sofort_count = len(fleet[fleet["Entscheidung"] == "SOFORT_STOPP"])
+    auto_count = len(fleet[fleet["Entscheidung"] == "AUTO_AUFTRAG"])
+    bestand_count = len(fleet[fleet["Entscheidung"] == "BESTANDSRISIKO"])
+    vorwarnung_count = len(fleet[fleet["Entscheidung"] == "VORWARNUNG"])
+    monitoring_count = len(fleet[fleet["Entscheidung"] == "MONITORING"])
+
+    avg_rul = fleet["RUL_min"].mean()
+    avg_confidence = fleet["Confidence"].mean()
+    total_risk = fleet["Risk_Score"].sum()
+
+    elapsed_minutes = (time.time() - st.session_state.start_time) / 60
+    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
+    total_savings = elapsed_minutes * avg_downtime_cost * 0.38
+
+    # التقرير الكامل
+    st.subheader("📊 Schicht-Statistiken")
+
+    col_a, col_b, col_c, col_d = st.columns(4)
+    with col_a:
+        kpi_card("🚨 Sofort-Stopps", sofort_count,
+                "kritische Eingriffe", "#ef4444")
+    with col_b:
+        kpi_card("📦 Auto-Aufträge", auto_count,
+                "automatisch ausgelöst", "#22c55e")
+    with col_c:
+        kpi_card("⚠️ Bestandsrisiken", bestand_count,
+                "Lagerproblem erkannt", "#f59e0b")
+    with col_d:
+        kpi_card("✅ Monitoring", monitoring_count,
+                "Maschinen im Normalbetrieb", "#38bdf8")
+
+    st.markdown("---")
+
+    # تقرير HTML كامل
+    st.subheader("📋 Vollständiger Schichtbericht")
+
+    # جدول حالة الآلات
+    bericht_df = fleet[[
+        "Maschine", "Zelle", "KI_Zustand", "Confidence",
+        "RUL_min", "Entscheidung", "Risk_Score"
+    ]].copy()
+
+    bericht_df["Confidence"] = bericht_df["Confidence"].apply(
+        lambda x: f"{x*100:.1f}%"
+    )
+
+    st.dataframe(bericht_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # التقرير النصي
+    st.subheader("📝 Schichtbericht Text")
+
+    kritische = fleet[fleet["Entscheidung"].isin([
+        "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
+    ])]
+
+    kritische_liste = ""
+    for _, row in kritische.iterrows():
+        machine_name = MACHINE_REGISTRY.get(
+            row["Maschine"], {}
+        ).get("name", "")
+        kritische_liste += f"• {row['Maschine']} ({machine_name}): {row['Entscheidung']} – RUL: {row['RUL_min']} min\n"
+
+    bericht_text = f"""
+SCHICHTBERICHT – FertigungsTech GmbH – Werk 1, München
+{"="*55}
+Datum:           {now.strftime("%d.%m.%Y")}
+Uhrzeit:         {now.strftime("%H:%M:%S")} Uhr
+Schicht:         {current_shift}
+Erstellt von:    Predictive Tool Logistics System (KI)
+{"="*55}
+
+ZUSAMMENFASSUNG
+---------------
+Überwachte Maschinen:     {len(fleet)}
+Sofort-Stopps:            {sofort_count}
+Automatische Aufträge:    {auto_count}
+Bestandsrisiken:          {bestand_count}
+Vorwarnungen:             {vorwarnung_count}
+Normalbetrieb:            {monitoring_count}
+
+KI-KENNZAHLEN
+-------------
+Durchschnittliche RUL:    {avg_rul:.1f} min
+Durchschnittl. Confidence:{avg_confidence*100:.1f}%
+Gesamt-Risiko-Index:      {total_risk:.0f}
+
+WIRTSCHAFTLICHE KENNZAHLEN
+---------------------------
+Systembetrieb:            {int(elapsed_minutes)} Minuten
+Eingesparte Kosten:       {total_savings:.2f} €
+Vermiedene Stillstände:   {int(elapsed_minutes/45)}
+Vermiedene Eiltransporte: {int(elapsed_minutes/28)}
+
+KRITISCHE MASCHINEN
+-------------------
+{kritische_liste if kritische_liste else "Keine kritischen Maschinen in dieser Schicht."}
+
+EMPFEHLUNGEN FÜR NÄCHSTE SCHICHT
+----------------------------------
+{"• Sofortige Überprüfung der kritischen Maschinen erforderlich" if sofort_count > 0 else "• Normaler Betrieb kann fortgesetzt werden"}
+{"• Werkzeugbestand für " + str(bestand_count) + " Maschinen prüfen" if bestand_count > 0 else "• Werkzeugbestand ist ausreichend"}
+{"• " + str(auto_count) + " Werkzeuge wurden automatisch bestellt" if auto_count > 0 else ""}
+* Nächste KI-Analyse: Kontinuierlich alle 5 Sekunden
+
+{"="*55}
+SYSTEM: Predictive Tool Logistics – FertigungsTech GmbH
+KI-Modell: Random Forest + Gemini AI
+{"="*55}
+    """
+
+    st.code(bericht_text, language="text")
+
+    # زر تنزيل التقرير
+    st.download_button(
+        label="📥 Schichtbericht herunterladen",
+        data=bericht_text,
+        file_name=f"Schichtbericht_{now.strftime('%Y%m%d_%H%M')}.txt",
+        mime="text/plain"
+    )
