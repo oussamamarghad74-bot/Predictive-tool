@@ -2106,9 +2106,9 @@ with c4:
 
 st.subheader("Confusion Matrix")
 
-    cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
-    st.dataframe(cm_df, use_container_width=True)
-    st.markdown("---")
+cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
+st.dataframe(cm_df, use_container_width=True)
+st.markdown("---")
 st.subheader("🎵 Digital Twin Soundtrack – Akustischer Fingerabdruck")
 
 st.info("""
