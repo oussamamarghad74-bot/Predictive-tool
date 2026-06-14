@@ -184,7 +184,7 @@ if "last_update" not in st.session_state:
 if "update_counter" not in st.session_state:
     st.session_state.update_counter = 0
 
-if time.time() - st.session_state.last_update > 10:
+if time.time() - st.session_state.last_update > 5:
     st.session_state.last_update = time.time()
     st.session_state.update_counter += 1
     st.rerun()
