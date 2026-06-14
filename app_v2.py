@@ -192,15 +192,6 @@ if time.time() - st.session_state.last_update > 10:
 rng_live = np.random.default_rng(
     int(time.time() / 10)
 )
-
-fleet["RUL_min"] = fleet["RUL_min"].apply(
-    lambda x: max(1, x + rng_live.normal(0, 1.5))
-).round(1)
-
-fleet["Risk_Score"] = fleet["Risk_Score"].apply(
-    lambda x: max(0, x + rng_live.normal(0, 2.0))
-).round(1)
-
 st.sidebar.caption(
     f"🔄 Live Update | {time.strftime('%H:%M:%S')} | #{st.session_state.update_counter}"
 )
@@ -1306,6 +1297,15 @@ with st.spinner("KI-Modell wird trainiert und Fabrikzustand wird simuliert..."):
         fleet.loc[0, "Entscheidung"] = "AUTO_AUFTRAG"
         fleet.loc[0, "Risk_Score"] = 88.0
         fleet = fleet.sort_values(["Priorität_Rang", "Risk_Score"], ascending=[True, False]).reset_index(drop=True)
+rng_live = np.random.default_rng(int(time.time() / 10))
+
+fleet["RUL_min"] = fleet["RUL_min"].apply(
+    lambda x: max(1, x + rng_live.normal(0, 1.5))
+).round(1)
+
+fleet["Risk_Score"] = fleet["Risk_Score"].apply(
+    lambda x: max(0, x + rng_live.normal(0, 2.0))
+).round(1)
 
 # =========================================================
 # Global KPIs
