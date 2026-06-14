@@ -2056,11 +2056,11 @@ st.plotly_chart(fig_live, use_container_width=True)
 
 col1, col2 = st.columns(2)
 
-    with col1:
+with col1:
         st.pyplot(plot_waveform(audio))
         st.pyplot(plot_spectrum(audio))
 
-    with col2:
+with col2:
         st.pyplot(plot_mel(audio))
 
         features = extract_features(audio).reshape(1, -1)
