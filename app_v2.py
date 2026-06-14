@@ -1107,7 +1107,147 @@ st.sidebar.subheader("KI-Entscheidungsschwellen")
 auto_threshold = st.sidebar.slider("Auto-Auftrag ab Confidence", 0.50, 1.00, 0.84, 0.01)
 manual_threshold = st.sidebar.slider("Bedienerfreigabe ab Confidence", 0.30, 0.90, 0.60, 0.01)
 
+# =========================================================
+# Live Notifications System
+# =========================================================
 
+def show_notifications(fleet_df):
+    sofort = fleet_df[fleet_df["Entscheidung"] == "SOFORT_STOPP"]
+    auto = fleet_df[fleet_df["Entscheidung"] == "AUTO_AUFTRAG"]
+    bestand = fleet_df[fleet_df["Entscheidung"] == "BESTANDSRISIKO"]
+    vorwarnung = fleet_df[fleet_df["Entscheidung"] == "VORWARNUNG"]
+
+    if len(sofort) > 0:
+        for _, row in sofort.iterrows():
+            st.markdown(f"""
+            <div style="
+                background:linear-gradient(135deg, #7f1d1d, #dc2626);
+                border:2px solid #ef4444;
+                border-radius:12px;
+                padding:14px 18px;
+                margin-bottom:8px;
+                animation: pulse 1s infinite;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;">
+                <div>
+                    <span style="font-size:20px;">🚨</span>
+                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                        SOFORT-STOPP: {row['Maschine']}
+                    </span>
+                    <span style="color:#fca5a5; font-size:13px; margin-left:12px;">
+                        {MACHINE_REGISTRY.get(row['Maschine'], {}).get('name', '')}
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:#fca5a5; font-size:13px;">
+                        ⏱️ Noch {row['RUL_min']} min | 
+                        Werkzeug: {row['Werkzeug_ID']}
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if len(bestand) > 0:
+        for _, row in bestand.iterrows():
+            st.markdown(f"""
+            <div style="
+                background:linear-gradient(135deg, #78350f, #b45309);
+                border:2px solid #f59e0b;
+                border-radius:12px;
+                padding:14px 18px;
+                margin-bottom:8px;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;">
+                <div>
+                    <span style="font-size:20px;">⚠️</span>
+                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                        BESTANDSRISIKO: {row['Maschine']}
+                    </span>
+                    <span style="color:#fde68a; font-size:13px; margin-left:12px;">
+                        Ersatzwerkzeug nicht verfügbar!
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:#fde68a; font-size:13px;">
+                        ⏱️ Noch {row['RUL_min']} min | 
+                        Werkzeug: {row['Werkzeug_ID']}
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if len(auto) > 0:
+        for _, row in auto.iterrows():
+            st.markdown(f"""
+            <div style="
+                background:linear-gradient(135deg, #064e3b, #065f46);
+                border:2px solid #10b981;
+                border-radius:12px;
+                padding:14px 18px;
+                margin-bottom:8px;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;">
+                <div>
+                    <span style="font-size:20px;">📦</span>
+                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                        AUTO-AUFTRAG: {row['Maschine']}
+                    </span>
+                    <span style="color:#6ee7b7; font-size:13px; margin-left:12px;">
+                        Werkzeugbereitstellung gestartet
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:#6ee7b7; font-size:13px;">
+                        ⏱️ Noch {row['RUL_min']} min | 
+                        Vorlaufzeit: {row['Logistische_Vorlaufzeit_min']} min
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if len(vorwarnung) > 0:
+        for _, row in vorwarnung.iterrows():
+            st.markdown(f"""
+            <div style="
+                background:linear-gradient(135deg, #1e1b4b, #3730a3);
+                border:2px solid #6366f1;
+                border-radius:12px;
+                padding:14px 18px;
+                margin-bottom:8px;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;">
+                <div>
+                    <span style="font-size:20px;">🔔</span>
+                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                        VORWARNUNG: {row['Maschine']}
+                    </span>
+                    <span style="color:#a5b4fc; font-size:13px; margin-left:12px;">
+                        Logistische Vorbereitung empfohlen
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:#a5b4fc; font-size:13px;">
+                        ⏱️ Noch {row['RUL_min']} min
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if len(sofort) == 0 and len(auto) == 0 and len(bestand) == 0:
+        st.markdown("""
+        <div style="background:linear-gradient(135deg, #064e3b, #065f46);
+                    border:1px solid #10b981; border-radius:12px;
+                    padding:12px 18px; margin-bottom:8px;">
+            <span style="font-size:16px;">✅</span>
+            <span style="color:#6ee7b7; font-weight:600; margin-left:8px;">
+                Alle Systeme normal – Keine kritischen Alarme
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
 # =========================================================
 # Model Training and Fleet Evaluation
 # =========================================================
@@ -1190,6 +1330,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 
 with tab1:
     st.header("🏭 Smart Factory Fertigungs-Leitwarte")
+    st.subheader("🔔 Live Alarm Center")
+    show_notifications(fleet)
+    st.markdown("---")
     # ============================
     # Cost Savings Live Counter
     # ============================
