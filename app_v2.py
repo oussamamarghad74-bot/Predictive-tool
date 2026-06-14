@@ -2094,17 +2094,17 @@ with col2:
 
 st.markdown("---")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
+c1, c2, c3, c4 = st.columns(4)
+with c1:
         kpi_card("Tatsächlicher Zustand", audio_row["Ist_Zustand"], "simuliert", STATE_COLORS[audio_row["Ist_Zustand"]])
-    with c2:
+with c2:
         kpi_card("KI-Zustand", audio_row["KI_Zustand"], "Vorhersage", STATE_COLORS[audio_row["KI_Zustand"]])
-    with c3:
+with c3:
         kpi_card("Confidence", f"{audio_row['Confidence']*100:.1f}%", "Modellsicherheit", "#38bdf8")
-    with c4:
+with c4:
         kpi_card("Test Accuracy", f"{model_accuracy*100:.1f}%", "synthetische Testdaten", "#a855f7")
 
-    st.subheader("Confusion Matrix")
+st.subheader("Confusion Matrix")
 
     cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
     st.dataframe(cm_df, use_container_width=True)
