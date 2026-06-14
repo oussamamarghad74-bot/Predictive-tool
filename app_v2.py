@@ -181,9 +181,29 @@ import time
 if "last_update" not in st.session_state:
     st.session_state.last_update = time.time()
 
-if time.time() - st.session_state.last_update > 30:
+if "update_counter" not in st.session_state:
+    st.session_state.update_counter = 0
+
+if time.time() - st.session_state.last_update > 10:
     st.session_state.last_update = time.time()
+    st.session_state.update_counter += 1
     st.rerun()
+    
+rng_live = np.random.default_rng(
+    int(time.time() / 10)
+)
+
+fleet["RUL_min"] = fleet["RUL_min"].apply(
+    lambda x: max(1, x + rng_live.normal(0, 1.5))
+).round(1)
+
+fleet["Risk_Score"] = fleet["Risk_Score"].apply(
+    lambda x: max(0, x + rng_live.normal(0, 2.0))
+).round(1)
+
+st.sidebar.caption(
+    f"🔄 Live Update | {time.strftime('%H:%M:%S')} | #{st.session_state.update_counter}"
+)
 
 st.sidebar.caption(
     f"🔄 Live Update alle 30s | {time.strftime('%H:%M:%S')}"
