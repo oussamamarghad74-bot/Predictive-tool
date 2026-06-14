@@ -2092,7 +2092,7 @@ with col2:
 
         st.plotly_chart(fig_prob, use_container_width=True)
 
-    st.markdown("---")
+st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
