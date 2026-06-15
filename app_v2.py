@@ -2769,7 +2769,7 @@ Gabelstapler Predictive Maintenance (Erweiterung)
 # Tab 6: KI Chat Assistant
 # ========================================================= 
 
-with tab9:
+with tab6:
     st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
 
     st.markdown("""
