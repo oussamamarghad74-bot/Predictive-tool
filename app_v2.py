@@ -184,7 +184,7 @@ if "last_update" not in st.session_state:
 if "update_counter" not in st.session_state:
     st.session_state.update_counter = 0
 
-if time.time() - st.session_state.last_update > 5:
+if time.time() - st.session_state.last_update > 10:
     st.session_state.last_update = time.time()
     st.session_state.update_counter += 1
     st.rerun()
@@ -206,6 +206,51 @@ st.sidebar.caption(
 
 st.markdown("""
 <style>
+    @keyframes slideInFromTop {
+        0% { transform: translateY(-30px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes pulseRed {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+        50% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+    }
+
+    @keyframes pulseOrange {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.5); }
+        50% { box-shadow: 0 0 0 14px rgba(245,158,11,0); }
+    }
+
+    @keyframes pulseGreen {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+        50% { box-shadow: 0 0 0 14px rgba(16,185,129,0); }
+    }
+
+    @keyframes pulseBlue {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+        50% { box-shadow: 0 0 0 14px rgba(99,102,241,0); }
+    }
+
+    .notif-sofort {
+        animation: slideInFromTop 0.5s ease-out forwards,
+                   pulseRed 2s infinite 0.5s;
+    }
+
+    .notif-bestand {
+        animation: slideInFromTop 0.5s ease-out forwards,
+                   pulseOrange 2s infinite 0.5s;
+    }
+
+    .notif-auto {
+        animation: slideInFromTop 0.6s ease-out forwards,
+                   pulseGreen 2.5s infinite 0.6s;
+    }
+
+    .notif-vorwarnung {
+        animation: slideInFromTop 0.7s ease-out forwards,
+                   pulseBlue 3s infinite 0.7s;
+    }
+
     .main {
         background-color: #0f172a;
     }
@@ -1123,36 +1168,60 @@ manual_threshold = st.sidebar.slider("Bedienerfreigabe ab Confidence", 0.30, 0.9
 # =========================================================
 
 def show_notifications(fleet_df):
-    sofort = fleet_df[fleet_df["Entscheidung"] == "SOFORT_STOPP"]
-    auto = fleet_df[fleet_df["Entscheidung"] == "AUTO_AUFTRAG"]
+    # تتبع الإشعارات الجديدة
+    if "prev_notifications" not in st.session_state:
+        st.session_state.prev_notifications = set()
+
+    current_notifications = set(
+        fleet_df[fleet_df["Entscheidung"].isin([
+            "SOFORT_STOPP", "AUTO_AUFTRAG",
+            "BESTANDSRISIKO", "VORWARNUNG"
+        ])]["Maschine"].tolist()
+    )
+
+    new_machines = current_notifications - st.session_state.prev_notifications
+    st.session_state.prev_notifications = current_notifications
+
+    def new_badge(machine_id):
+        if machine_id in new_machines:
+            return """<span style="background:#fbbf24; color:#000;
+                        font-size:11px; padding:2px 8px;
+                        border-radius:999px; margin-left:10px;
+                        font-weight:700;">🆕 NEU</span>"""
+        return ""
+
+    sofort  = fleet_df[fleet_df["Entscheidung"] == "SOFORT_STOPP"]
+    auto    = fleet_df[fleet_df["Entscheidung"] == "AUTO_AUFTRAG"]
     bestand = fleet_df[fleet_df["Entscheidung"] == "BESTANDSRISIKO"]
     vorwarnung = fleet_df[fleet_df["Entscheidung"] == "VORWARNUNG"]
 
     if len(sofort) > 0:
         for _, row in sofort.iterrows():
             st.markdown(f"""
-            <div style="
+            <div class="notif-sofort" style="
                 background:linear-gradient(135deg, #7f1d1d, #dc2626);
                 border:2px solid #ef4444;
                 border-radius:12px;
                 padding:14px 18px;
                 margin-bottom:8px;
-                animation: pulse 1s infinite;
                 display:flex;
                 justify-content:space-between;
                 align-items:center;">
                 <div>
                     <span style="font-size:20px;">🚨</span>
-                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                    <span style="color:white; font-weight:800;
+                                 font-size:16px; margin-left:8px;">
                         SOFORT-STOPP: {row['Maschine']}
                     </span>
-                    <span style="color:#fca5a5; font-size:13px; margin-left:12px;">
+                    <span style="color:#fca5a5; font-size:13px;
+                                 margin-left:12px;">
                         {MACHINE_REGISTRY.get(row['Maschine'], {}).get('name', '')}
                     </span>
+                    {new_badge(row['Maschine'])}
                 </div>
                 <div style="text-align:right;">
                     <span style="color:#fca5a5; font-size:13px;">
-                        ⏱️ Noch {row['RUL_min']} min | 
+                        ⏱️ Noch {row['RUL_min']} min |
                         Werkzeug: {row['Werkzeug_ID']}
                     </span>
                 </div>
@@ -1162,7 +1231,7 @@ def show_notifications(fleet_df):
     if len(bestand) > 0:
         for _, row in bestand.iterrows():
             st.markdown(f"""
-            <div style="
+            <div class="notif-bestand" style="
                 background:linear-gradient(135deg, #78350f, #b45309);
                 border:2px solid #f59e0b;
                 border-radius:12px;
@@ -1173,16 +1242,19 @@ def show_notifications(fleet_df):
                 align-items:center;">
                 <div>
                     <span style="font-size:20px;">⚠️</span>
-                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                    <span style="color:white; font-weight:800;
+                                 font-size:16px; margin-left:8px;">
                         BESTANDSRISIKO: {row['Maschine']}
                     </span>
-                    <span style="color:#fde68a; font-size:13px; margin-left:12px;">
+                    <span style="color:#fde68a; font-size:13px;
+                                 margin-left:12px;">
                         Ersatzwerkzeug nicht verfügbar!
                     </span>
+                    {new_badge(row['Maschine'])}
                 </div>
                 <div style="text-align:right;">
                     <span style="color:#fde68a; font-size:13px;">
-                        ⏱️ Noch {row['RUL_min']} min | 
+                        ⏱️ Noch {row['RUL_min']} min |
                         Werkzeug: {row['Werkzeug_ID']}
                     </span>
                 </div>
@@ -1192,7 +1264,7 @@ def show_notifications(fleet_df):
     if len(auto) > 0:
         for _, row in auto.iterrows():
             st.markdown(f"""
-            <div style="
+            <div class="notif-auto" style="
                 background:linear-gradient(135deg, #064e3b, #065f46);
                 border:2px solid #10b981;
                 border-radius:12px;
@@ -1203,16 +1275,19 @@ def show_notifications(fleet_df):
                 align-items:center;">
                 <div>
                     <span style="font-size:20px;">📦</span>
-                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                    <span style="color:white; font-weight:800;
+                                 font-size:16px; margin-left:8px;">
                         AUTO-AUFTRAG: {row['Maschine']}
                     </span>
-                    <span style="color:#6ee7b7; font-size:13px; margin-left:12px;">
+                    <span style="color:#6ee7b7; font-size:13px;
+                                 margin-left:12px;">
                         Werkzeugbereitstellung gestartet
                     </span>
+                    {new_badge(row['Maschine'])}
                 </div>
                 <div style="text-align:right;">
                     <span style="color:#6ee7b7; font-size:13px;">
-                        ⏱️ Noch {row['RUL_min']} min | 
+                        ⏱️ Noch {row['RUL_min']} min |
                         Vorlaufzeit: {row['Logistische_Vorlaufzeit_min']} min
                     </span>
                 </div>
@@ -1222,7 +1297,7 @@ def show_notifications(fleet_df):
     if len(vorwarnung) > 0:
         for _, row in vorwarnung.iterrows():
             st.markdown(f"""
-            <div style="
+            <div class="notif-vorwarnung" style="
                 background:linear-gradient(135deg, #1e1b4b, #3730a3);
                 border:2px solid #6366f1;
                 border-radius:12px;
@@ -1233,12 +1308,15 @@ def show_notifications(fleet_df):
                 align-items:center;">
                 <div>
                     <span style="font-size:20px;">🔔</span>
-                    <span style="color:white; font-weight:800; font-size:16px; margin-left:8px;">
+                    <span style="color:white; font-weight:800;
+                                 font-size:16px; margin-left:8px;">
                         VORWARNUNG: {row['Maschine']}
                     </span>
-                    <span style="color:#a5b4fc; font-size:13px; margin-left:12px;">
+                    <span style="color:#a5b4fc; font-size:13px;
+                                 margin-left:12px;">
                         Logistische Vorbereitung empfohlen
                     </span>
+                    {new_badge(row['Maschine'])}
                 </div>
                 <div style="text-align:right;">
                     <span style="color:#a5b4fc; font-size:13px;">
@@ -1252,7 +1330,8 @@ def show_notifications(fleet_df):
         st.markdown("""
         <div style="background:linear-gradient(135deg, #064e3b, #065f46);
                     border:1px solid #10b981; border-radius:12px;
-                    padding:12px 18px; margin-bottom:8px;">
+                    padding:12px 18px; margin-bottom:8px;
+                    animation: slideInFromTop 0.5s ease-out;">
             <span style="font-size:16px;">✅</span>
             <span style="color:#6ee7b7; font-weight:600; margin-left:8px;">
                 Alle Systeme normal – Keine kritischen Alarme
