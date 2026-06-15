@@ -2872,8 +2872,6 @@ Sei präzise und professionell.
                             antwort = f"⚠️ Fehler beim Lesen der Antwort: {str(e)}\n\nAPI Response: {str(data)}"
                     else:
                         antwort = f"⚠️ API Fehler: {response.status_code}\n{response.text}"
-                    else:
-                        antwort = f"⚠️ API Fehler: {response.status_code}"
                 except Exception as e:
                     antwort = f"⚠️ Verbindungsfehler: {str(e)}"
 
