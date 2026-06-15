@@ -2524,9 +2524,136 @@ KI-Modell: Random Forest + Gemini AI
     )
 
 # =========================================================
-# Tab 5: Logistics Control
+# Tab 5: Architektur
 # =========================================================
+with tab5:
+    st.header("🧩 Architektur, Innovationskern und Präsentations-Pitch")
 
+    st.subheader("Systemarchitektur")
+
+    st.code("""
+Akustische Werkzeugsignale (CNC-Maschinen)
+        ↓
+Audio Feature Extraction (Librosa)
+        ↓
+KI-Modell zur Werkzeugzustandserkennung (Random Forest)
+        ↓
+Restlebensdauer-Prognose RUL
+        ↓
+Vergleich mit logistischer Vorlaufzeit
+        ↓
+Automatische Entscheidung:
+    - Monitoring
+    - Vorwarnung
+    - Bedienerfreigabe
+    - Automatischer Bereitstellungsauftrag
+    - Sofort-Stopp
+        ↓
+Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
+        ↓
+Gabelstapler Predictive Maintenance (Erweiterung)
+    """, language="text")
+
+    st.subheader("Innovationskern")
+
+    st.success("""
+    Der Prototyp verbindet akustische KI-Erkennung mit automatisierter 
+    Produktionslogistik. Er wandelt Sensordaten direkt in logistische 
+    Entscheidungen um: Wann muss ein Ersatzwerkzeug vorbereitet werden?
+    Zusätzlich überwacht das System Gabelstapler und ermöglicht damit
+    eine vollständige Fabriklogistik-Überwachung.
+    """)
+
+    st.subheader("Industrie 4.0 Bausteine")
+
+    ind40 = pd.DataFrame({
+        "Industrie-4.0-Baustein": [
+            "IoT / Sensorik",
+            "KI / Machine Learning",
+            "Predictive Analytics",
+            "Produktionslogistik",
+            "Automatisierung",
+            "Digital Twin",
+            "Smart Factory",
+            "Generative KI"
+        ],
+        "Umsetzung im Prototyp": [
+            "Akustische Werkzeugsignale + Sensor-Daten",
+            "Random Forest Klassifikation",
+            "RUL-Prognose + Gabelstapler Wartung",
+            "Werkzeuglager, Voreinstellung, AGV/FTS",
+            "Automatische Bereitstellungsentscheidung",
+            "Digital Twin Soundtrack – Akustischer Fingerabdruck",
+            "Control Tower mit Live-Daten und Domino-Effekt",
+            "Gemini AI Chat Assistant"
+        ]
+    })
+
+    st.dataframe(ind40, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    st.subheader("Präsentations-Pitch")
+
+    st.info("""
+    Unser Projekt „Predictive Tool Logistics" verbindet KI-basierte 
+    akustische Werkzeugzustandserkennung mit automatisierter Logistik.
+    
+    Das System analysiert CNC-Werkzeugsignale, prognostiziert den 
+    Werkzeugzustand und vergleicht die Restlebensdauer mit der 
+    logistischen Vorlaufzeit. Wenn die Zeit nicht mehr ausreicht, 
+    wird automatisch ein Bereitstellungsauftrag erzeugt.
+    
+    Zusätzlich überwacht das System Gabelstapler im Werk und sagt 
+    voraus, wann Batterie, Reifen oder Motor gewartet werden müssen.
+    
+    Dadurch werden ungeplante Stillstände, Eiltransporte und 
+    Ausschussrisiken deutlich reduziert.
+    """)
+
+    st.subheader("Risiken und Gegenmaßnahmen")
+
+    risks = pd.DataFrame({
+        "Risiko": [
+            "Reale Fabrikgeräusche stören Audioanalyse",
+            "KI braucht echte Trainingsdaten",
+            "Falsche Prognosen möglich",
+            "Integration in MES/WMS komplex"
+        ],
+        "Gegenmaßnahme": [
+            "Kombination mit Vibration und Spindelstrom",
+            "Pilotphase mit echten CNC-Daten",
+            "Confidence Score + Sicherheitsmarge",
+            "Schnittstellen über OPC-UA, MQTT, REST API"
+        ]
+    })
+
+    st.dataframe(risks, use_container_width=True, hide_index=True)
+
+    st.subheader("Technologie-Stack")
+
+    tech = pd.DataFrame({
+        "Technologie": [
+            "Python + Streamlit",
+            "Scikit-Learn",
+            "Librosa",
+            "Plotly",
+            "Google Gemini AI",
+            "Pandas + NumPy",
+            "SoundFile"
+        ],
+        "Verwendung": [
+            "Dashboard und Web-Interface",
+            "Random Forest KI-Modell",
+            "Audio Feature Extraction",
+            "Interaktive Visualisierungen",
+            "KI-Chat Assistant",
+            "Datenverarbeitung und Simulation",
+            "Audio-Generierung und -Verarbeitung"
+        ]
+    })
+
+    st.dataframe(tech, use_container_width=True, hide_index=True)
 # =========================================================
 # Tab 6: KPI Simulation
 # =========================================================
@@ -2619,676 +2746,3 @@ with tab6:
     **Interpretation:**  
     Der Predictive-Tool-Logistics-Ansatz reduziert Stillstand, weil Werkzeugverschleiß früher erkannt und direkt in logistische Bereitstellungsaufträge umgesetzt wird.
     """)
-
-
-# =========================================================
-# Tab 7: Architecture and Pitch
-# =========================================================
-
-with tab7:
-    st.header("🧩 Architektur, Innovationskern und Präsentations-Pitch")
-
-    st.subheader("Systemarchitektur")
-
-    st.code("""
-Akustische Werkzeugsignale
-        ↓
-Audio Feature Extraction
-        ↓
-KI-Modell zur Werkzeugzustandserkennung
-        ↓
-Restlebensdauer-Prognose RUL
-        ↓
-Vergleich mit logistischer Vorlaufzeit
-        ↓
-Automatische Entscheidung:
-    - Monitoring
-    - Vorwarnung
-    - Bedienerfreigabe
-    - Automatischer Bereitstellungsauftrag
-    - Sofort-Stopp
-        ↓
-Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
-    """, language="text")
-
-    st.subheader("Innovationskern")
-
-    st.success("""
-    Der Prototyp ist kein reines Monitoring-Dashboard. 
-    Er wandelt akustische Sensordaten in eine konkrete produktionslogistische Entscheidung um:
-    Wann muss ein Ersatzwerkzeug vorbereitet und zur Maschine transportiert werden?
-    """)
-
-    st.subheader("Industrielles Problem")
-
-    st.markdown("""
-    In CNC-Fertigungen entstehen häufig Maschinenstillstände, weil Werkzeugverschleiß zwar erkannt wird, 
-    die Werkzeuglogistik aber zu spät reagiert. 
-    Das Ersatzwerkzeug muss nicht nur vorhanden sein, sondern auch rechtzeitig reserviert, 
-    voreingestellt und zur richtigen Maschine transportiert werden.
-    """)
-
-    st.subheader("Präsentations-Pitch auf Deutsch")
-
-    st.info("""
-    Unser Projekt „Predictive Tool Logistics“ verbindet KI-basierte akustische Werkzeugzustandserkennung 
-    mit automatisierter Produktionslogistik. 
-    Der Prototyp analysiert simulierte Werkzeugsignale von CNC-Maschinen, prognostiziert den Werkzeugzustand 
-    und die Restlebensdauer und vergleicht diese mit der logistischen Vorlaufzeit für Lagerentnahme, 
-    Werkzeugvoreinstellung und Transport. 
-    Wenn die Restlebensdauer nicht mehr ausreicht, wird automatisch ein Bereitstellungsauftrag erzeugt. 
-    Dadurch werden ungeplante Maschinenstillstände, Eiltransporte und Ausschussrisiken reduziert.
-    """)
-
-    st.subheader("Warum ist das Industrie 4.0?")
-
-    ind40 = pd.DataFrame({
-        "Industrie-4.0-Baustein": [
-            "IoT / Sensorik",
-            "KI / Machine Learning",
-            "Predictive Analytics",
-            "Produktionslogistik",
-            "Automatisierung",
-            "Digital Twin / Simulation",
-            "Smart Factory"
-        ],
-        "Umsetzung im Prototyp": [
-            "Akustische Werkzeugsignale",
-            "Klassifikation von Werkzeugzuständen",
-            "RUL-Prognose",
-            "Werkzeuglager, Voreinstellung, AGV/FTS",
-            "Automatische Bereitstellungsentscheidung",
-            "Simulierte CNC-Fabrik mit vielen Maschinen",
-            "Control Tower mit Echtzeitlogik"
-        ]
-    })
-
-    st.dataframe(ind40, use_container_width=True, hide_index=True)
-
-    st.subheader("Risiken und Gegenmaßnahmen")
-
-    risks = pd.DataFrame({
-        "Risiko": [
-            "Reale Fabrikgeräusche können die Audioanalyse stören",
-            "KI braucht echte Trainingsdaten",
-            "Falsche Prognosen können zu frühen oder späten Wechseln führen",
-            "Integration in reale MES/WMS/FTS-Systeme ist komplex"
-        ],
-        "Gegenmaßnahme": [
-            "Kombination mit Vibration, Spindelstrom oder Drehmoment",
-            "Pilotphase mit echten CNC-Daten und Transfer Learning",
-            "Confidence Score, Sicherheitsmarge und Bedienerfreigabe",
-            "Schnittstellen über MQTT, OPC UA, REST API oder Node-RED"
-        ]
-    })
-
-    st.dataframe(risks, use_container_width=True, hide_index=True)
-# =========================================================
-# Tab 8: KI-Entscheidungsassistent
-# =========================================================
-
-with tab8:
-
-    st.header("🧠 KI-Entscheidungsassistent")
-
-    st.write(
-        "Automatische Analyse des aktuellen Fabrikzustands."
-    )
-
-    if st.button("Fabrik analysieren"):
-
-        kritische_maschinen = fleet[
-            fleet["Entscheidung"].isin(
-                [
-                    "SOFORT_STOPP",
-                    "AUTO_AUFTRAG",
-                    "BESTANDSRISIKO"
-                ]
-            )
-        ]
-
-        st.subheader("KI-Zusammenfassung")
-
-        st.write(
-            f"Anzahl CNC-Maschinen: {len(fleet)}"
-        )
-
-        st.write(
-            f"Kritische Maschinen: {len(kritische_maschinen)}"
-        )
-
-        if len(kritische_maschinen) > 0:
-
-            top = kritische_maschinen.iloc[0]
-
-            st.error(
-                f"""
-                Höchste Priorität:
-
-                Maschine: {top['Maschine']}
-
-                Werkzeug: {top['Werkzeug_ID']}
-
-                Zustand: {top['KI_Zustand']}
-
-                RUL: {top['RUL_min']} min
-
-                Logistische Vorlaufzeit:
-                {top['Logistische_Vorlaufzeit_min']} min
-
-                Entscheidung:
-                {top['Entscheidung']}
-                """
-            )
-
-            erklaerung = f"""
-            Die Maschine {top['Maschine']} wurde von der KI als kritisch erkannt.
-
-            Der Werkzeugzustand lautet:
-            {top['KI_Zustand']}.
-
-            Die verbleibende Restlebensdauer beträgt
-            {top['RUL_min']} Minuten.
-
-            Die benötigte logistische Vorlaufzeit beträgt
-            {top['Logistische_Vorlaufzeit_min']} Minuten.
-
-            Deshalb empfiehlt das System:
-
-            {top['Entscheidung']}
-
-            um einen ungeplanten Maschinenstillstand zu vermeiden.
-            """
-
-            st.success(erklaerung)
-            
-            st.success(erklaerung)
-
-            st.subheader("Empfohlene Maßnahmen")
-
-            if top["Entscheidung"] == "AUTO_AUFTRAG":
-
-                st.write("""
-                ✅ Ersatzwerkzeug automatisch reservieren
-
-                ✅ Voreinstellauftrag erzeugen
-
-                ✅ Transportauftrag an AGV/FTS senden
-
-                ✅ Werkzeugwechsel vorbereiten
-                """)
-
-            elif top["Entscheidung"] == "SOFORT_STOPP":
-
-                st.write("""
-                🔴 Sofortiger Werkzeugwechsel erforderlich
-
-                🔴 Produktionsleitung informieren
-
-                🔴 Ersatzwerkzeug priorisieren
-
-                🔴 Maschinenstillstand vermeiden
-                """)
-
-            elif top["Entscheidung"] == "BESTANDSRISIKO":
-
-                st.write("""
-                ⚠ Ersatzwerkzeug nicht verfügbar
-
-                ⚠ Sonderbeschaffung prüfen
-
-                ⚠ Werkzeug aus anderer Zelle umverteilen
-
-                ⚠ Produktionsplanung anpassen
-                """)
-
-        else:
-
-            st.success(
-                "Keine kritischen Maschinen erkannt."
-            )
-# =========================================================
-# Tab 9: KI-Chat
-# =========================================================
-with tab9:
-    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
-
-    st.markdown("""
-    <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
-                border:1px solid #6366f1; border-radius:12px; padding:12px;
-                margin-bottom:16px;">
-        <div style="color:#a5b4fc; font-size:13px;">
-            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
-            alle aktuellen Maschinendaten von FertigungsTech GmbH.
-            Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    # بناء ملخص بيانات المصنع
-    def build_factory_context():
-        kritisch = fleet[fleet["Entscheidung"].isin([
-            "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
-        ])]
-        
-        context = f"""
-Du bist der KI-Assistent des Predictive Tool Logistics Systems 
-der FertigungsTech GmbH – Werk 1, München.
-
-AKTUELLER FABRIKSTATUS:
-- Gesamtmaschinen: {len(fleet)}
-- Kritische Maschinen: {len(kritisch)}
-- Durchschnittliche RUL: {fleet['RUL_min'].mean():.1f} min
-- Risiko-Index: {fleet['Risk_Score'].sum():.0f}
-- Aktuelle Schicht: {get_current_shift()}
-
-KRITISCHE MASCHINEN:
-{kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
-
-ALLE MASCHINEN ÜBERSICHT:
-{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
-
-Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
-Sei präzise und professionell.
-        """
-        return context
-
-    # عرض سجل المحادثة
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # حقل الإدخال
-    frage = st.chat_input(
-        "Frage auf Deutsch, Englisch oder Arabisch...",
-        key="gemini_chat_input"
-    )
-
-    if frage:
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": frage
-        })
-
-        with st.chat_message("user"):
-            st.markdown(frage)
-
-        with st.chat_message("assistant"):
-            with st.spinner("Gemini AI analysiert..."):
-                try:
-                    import requests
-
-                    factory_context = build_factory_context()
-
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-
-                    payload = {
-                        "contents": [
-                           {
-                                  "parts": [
-                                       {
-                                            "text": f"{factory_context}\n\nFrage: {frage}"
-                                       }
-                                  ]
-                           }
-                        ],
-                        "generationConfig": {
-                              "temperature": 0.7,
-                              "maxOutputTokens": 1000
-                        }
-                   }
-
-                    response = requests.post(
-                       url,
-                       json=payload,
-                       params={"key": GEMINI_API_KEY},
-                       timeout=15
-                   )
-
-                    if response.status_code == 200:
-                        data = response.json()
-                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
-                    else:
-                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
-
-                except Exception as e:
-                    antwort = f"⚠️ Verbindungsfehler: {str(e)}"
-
-                st.markdown(antwort)
-
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": antwort
-        })
-
-    # زر مسح المحادثة
-    col_chat, col_clear = st.columns([4, 1])
-    with col_clear:
-        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
-            st.session_state.chat_history = []
-            st.rerun()
-# =========================================================
-# Tab 10: Schichtbericht
-# =========================================================
-
-with tab10:
-    st.header("📄 Automatischer Schichtbericht")
-
-    st.markdown("""
-    <div style="background:linear-gradient(135deg, #1e3a8a, #1e293b);
-                border:1px solid #3b82f6; border-radius:12px; padding:14px;
-                margin-bottom:16px;">
-        <div style="color:#93c5fd; font-size:13px;">
-            📋 Das System generiert automatisch einen vollständigen 
-            Schichtbericht basierend auf den aktuellen Maschinendaten.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # معلومات الوردية
-    current_shift = get_current_shift()
-    now = pd.Timestamp.now()
-
-    col_s1, col_s2, col_s3 = st.columns(3)
-    with col_s1:
-        kpi_card("Aktuelle Schicht", current_shift.split()[0], 
-                current_shift, "#38bdf8")
-    with col_s2:
-        kpi_card("Datum", now.strftime("%d.%m.%Y"),
-                now.strftime("%H:%M:%S Uhr"), "#22c55e")
-    with col_s3:
-        kpi_card("Werk", "Werk 1 – München",
-                "FertigungsTech GmbH", "#a855f7")
-
-    st.markdown("---")
-
-    # إحصائيات الوردية
-    sofort_count = len(fleet[fleet["Entscheidung"] == "SOFORT_STOPP"])
-    auto_count = len(fleet[fleet["Entscheidung"] == "AUTO_AUFTRAG"])
-    bestand_count = len(fleet[fleet["Entscheidung"] == "BESTANDSRISIKO"])
-    vorwarnung_count = len(fleet[fleet["Entscheidung"] == "VORWARNUNG"])
-    monitoring_count = len(fleet[fleet["Entscheidung"] == "MONITORING"])
-
-    avg_rul = fleet["RUL_min"].mean()
-    avg_confidence = fleet["Confidence"].mean()
-    total_risk = fleet["Risk_Score"].sum()
-
-    elapsed_minutes = (time.time() - st.session_state.start_time) / 60
-    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
-    total_savings = elapsed_minutes * avg_downtime_cost * 0.38
-
-    # التقرير الكامل
-    st.subheader("📊 Schicht-Statistiken")
-
-    col_a, col_b, col_c, col_d = st.columns(4)
-    with col_a:
-        kpi_card("🚨 Sofort-Stopps", sofort_count,
-                "kritische Eingriffe", "#ef4444")
-    with col_b:
-        kpi_card("📦 Auto-Aufträge", auto_count,
-                "automatisch ausgelöst", "#22c55e")
-    with col_c:
-        kpi_card("⚠️ Bestandsrisiken", bestand_count,
-                "Lagerproblem erkannt", "#f59e0b")
-    with col_d:
-        kpi_card("✅ Monitoring", monitoring_count,
-                "Maschinen im Normalbetrieb", "#38bdf8")
-
-    st.markdown("---")
-
-    # تقرير HTML كامل
-    st.subheader("📋 Vollständiger Schichtbericht")
-
-    # جدول حالة الآلات
-    bericht_df = fleet[[
-        "Maschine", "Zelle", "KI_Zustand", "Confidence",
-        "RUL_min", "Entscheidung", "Risk_Score"
-    ]].copy()
-
-    bericht_df["Confidence"] = bericht_df["Confidence"].apply(
-        lambda x: f"{x*100:.1f}%"
-    )
-
-    st.dataframe(bericht_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    # التقرير النصي
-    st.subheader("📝 Schichtbericht Text")
-
-    kritische = fleet[fleet["Entscheidung"].isin([
-        "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
-    ])]
-
-    kritische_liste = ""
-    for _, row in kritische.iterrows():
-        machine_name = MACHINE_REGISTRY.get(
-            row["Maschine"], {}
-        ).get("name", "")
-        kritische_liste += f"• {row['Maschine']} ({machine_name}): {row['Entscheidung']} – RUL: {row['RUL_min']} min\n"
-
-    bericht_text = f"""
-SCHICHTBERICHT – FertigungsTech GmbH – Werk 1, München
-{"="*55}
-Datum:           {now.strftime("%d.%m.%Y")}
-Uhrzeit:         {now.strftime("%H:%M:%S")} Uhr
-Schicht:         {current_shift}
-Erstellt von:    Predictive Tool Logistics System (KI)
-{"="*55}
-
-ZUSAMMENFASSUNG
----------------
-Überwachte Maschinen:     {len(fleet)}
-Sofort-Stopps:            {sofort_count}
-Automatische Aufträge:    {auto_count}
-Bestandsrisiken:          {bestand_count}
-Vorwarnungen:             {vorwarnung_count}
-Normalbetrieb:            {monitoring_count}
-
-KI-KENNZAHLEN
--------------
-Durchschnittliche RUL:    {avg_rul:.1f} min
-Durchschnittl. Confidence:{avg_confidence*100:.1f}%
-Gesamt-Risiko-Index:      {total_risk:.0f}
-
-WIRTSCHAFTLICHE KENNZAHLEN
----------------------------
-Systembetrieb:            {int(elapsed_minutes)} Minuten
-Eingesparte Kosten:       {total_savings:.2f} €
-Vermiedene Stillstände:   {int(elapsed_minutes/45)}
-Vermiedene Eiltransporte: {int(elapsed_minutes/28)}
-
-KRITISCHE MASCHINEN
--------------------
-{kritische_liste if kritische_liste else "Keine kritischen Maschinen in dieser Schicht."}
-
-EMPFEHLUNGEN FÜR NÄCHSTE SCHICHT
-----------------------------------
-{"• Sofortige Überprüfung der kritischen Maschinen erforderlich" if sofort_count > 0 else "• Normaler Betrieb kann fortgesetzt werden"}
-{"• Werkzeugbestand für " + str(bestand_count) + " Maschinen prüfen" if bestand_count > 0 else "• Werkzeugbestand ist ausreichend"}
-{"• " + str(auto_count) + " Werkzeuge wurden automatisch bestellt" if auto_count > 0 else ""}
-* Nächste KI-Analyse: Kontinuierlich alle 5 Sekunden
-
-{"="*55}
-SYSTEM: Predictive Tool Logistics – FertigungsTech GmbH
-KI-Modell: Random Forest + Gemini AI
-{"="*55}
-    """
-
-    st.code(bericht_text, language="text")
-
-    # زر تنزيل التقرير
-    st.download_button(
-        label="📥 Schichtbericht herunterladen",
-        data=bericht_text,
-        file_name=f"Schichtbericht_{now.strftime('%Y%m%d_%H%M')}.txt",
-        mime="text/plain"
-    )
-# =========================================================
-# Tab 11: Predictive Maintenance Calendar
-# =========================================================
-
-with tab11:
-    st.header("📅 Predictiver Wartungskalender")
-
-    st.markdown("""
-    <div style="background:linear-gradient(135deg, #1e3a8a, #1e293b);
-                border:1px solid #3b82f6; border-radius:12px; padding:14px;
-                margin-bottom:16px;">
-        <div style="color:#93c5fd; font-size:13px;">
-            📅 Basierend auf der aktuellen RUL jeder Maschine berechnet 
-            das System automatisch, wann jede Maschine eine neue 
-            Werkzeugwechsel benötigt.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # حساب تواريخ الصيانة المستقبلية
-    now = pd.Timestamp.now()
-
-    calendar_data = []
-    for _, row in fleet.iterrows():
-        machine_info = MACHINE_REGISTRY.get(row["Maschine"], {})
-        
-        # وقت الصيانة المتوقع
-        maintenance_time = now + pd.Timedelta(minutes=float(row["RUL_min"]))
-        
-        # تحديد الأولوية
-        if row["RUL_min"] < 30:
-            priority = "🚨 Kritisch"
-            color = "#ef4444"
-        elif row["RUL_min"] < 60:
-            priority = "⚠️ Dringend"
-            color = "#f59e0b"
-        elif row["RUL_min"] < 90:
-            priority = "🔔 Bald"
-            color = "#6366f1"
-        else:
-            priority = "✅ Normal"
-            color = "#22c55e"
-
-        calendar_data.append({
-            "Maschine": row["Maschine"],
-            "Name": machine_info.get("name", ""),
-            "Zelle": row["Zelle"],
-            "Werkzeug": row["Werkzeug_ID"],
-            "RUL_min": row["RUL_min"],
-            "Wartung_um": maintenance_time.strftime("%d.%m.%Y %H:%M"),
-            "Priorität": priority,
-            "Farbe": color,
-            "Bediener": machine_info.get("bediener", "-")
-        })
-
-    cal_df = pd.DataFrame(calendar_data).sort_values(
-        "RUL_min", ascending=True
-    ).reset_index(drop=True)
-
-    # KPIs
-    kritisch_count = len(cal_df[cal_df["RUL_min"] < 30])
-    dringend_count = len(cal_df[(cal_df["RUL_min"] >= 30) & (cal_df["RUL_min"] < 60)])
-    bald_count = len(cal_df[(cal_df["RUL_min"] >= 60) & (cal_df["RUL_min"] < 90)])
-    normal_count = len(cal_df[cal_df["RUL_min"] >= 90])
-
-    col_k1, col_k2, col_k3, col_k4 = st.columns(4)
-    with col_k1:
-        kpi_card("🚨 Kritisch", kritisch_count, "< 30 min", "#ef4444")
-    with col_k2:
-        kpi_card("⚠️ Dringend", dringend_count, "30-60 min", "#f59e0b")
-    with col_k3:
-        kpi_card("🔔 Bald", bald_count, "60-90 min", "#6366f1")
-    with col_k4:
-        kpi_card("✅ Normal", normal_count, "> 90 min", "#22c55e")
-
-    st.markdown("---")
-
-    # Timeline Chart
-    st.subheader("⏱️ Wartungs-Timeline")
-
-    fig_cal = go.Figure()
-
-    for i, row in cal_df.iterrows():
-        fig_cal.add_trace(go.Bar(
-            x=[row["RUL_min"]],
-            y=[f"{row['Maschine']} – {row['Name']}"],
-            orientation="h",
-            marker=dict(color=row["Farbe"]),
-            text=f"{row['RUL_min']} min | {row['Wartung_um']}",
-            textposition="inside",
-            hovertemplate=(
-                f"<b>{row['Maschine']}</b><br>"
-                f"Werkzeug: {row['Werkzeug']}<br>"
-                f"RUL: {row['RUL_min']} min<br>"
-                f"Wartung um: {row['Wartung_um']}<br>"
-                f"Bediener: {row['Bediener']}<extra></extra>"
-            ),
-            showlegend=False
-        ))
-
-    fig_cal.add_vline(
-        x=30,
-        line_dash="dash",
-        line_color="#ef4444",
-        annotation_text="🚨 Kritisch",
-        annotation_font_color="#ef4444"
-    )
-
-    fig_cal.add_vline(
-        x=60,
-        line_dash="dash",
-        line_color="#f59e0b",
-        annotation_text="⚠️ Dringend",
-        annotation_font_color="#f59e0b"
-    )
-
-    fig_cal.update_layout(
-        paper_bgcolor="#111827",
-        plot_bgcolor="#0f172a",
-        font=dict(color="white"),
-        height=600,
-        xaxis=dict(
-            title="Verbleibende Zeit [min]",
-            gridcolor="#334155",
-            color="white"
-        ),
-        yaxis=dict(
-            gridcolor="#334155",
-            color="white"
-        ),
-        title=dict(
-            text="Wartungsplan – Alle Maschinen nach RUL sortiert",
-            font=dict(color="white")
-        )
-    )
-
-    st.plotly_chart(fig_cal, use_container_width=True)
-
-    st.markdown("---")
-
-    # جدول التقويم الكامل
-    st.subheader("📋 Vollständiger Wartungsplan")
-
-    display_cal = cal_df[[
-        "Priorität", "Maschine", "Name", "Zelle",
-        "Werkzeug", "RUL_min", "Wartung_um", "Bediener"
-    ]]
-
-    st.dataframe(
-        display_cal,
-        use_container_width=True,
-        hide_index=True,
-        height=400
-    )
-
-    # زر تنزيل
-    csv_data = display_cal.to_csv(index=False)
-    st.download_button(
-        label="📥 Wartungsplan herunterladen",
-        data=csv_data,
-        file_name=f"Wartungsplan_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-        mime="text/csv"
-    )
