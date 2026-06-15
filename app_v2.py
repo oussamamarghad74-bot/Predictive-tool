@@ -2785,7 +2785,7 @@ with tab6:
     """, unsafe_allow_html=True)
 
     # ← هنا ضع API Key الخاص بك
-    GEMINI_API_KEY = "ضع_API_Key_هنا"
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
