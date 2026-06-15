@@ -1351,16 +1351,16 @@ with tab1:
     # ============================
     # Cost Savings Live Counter
     # ============================
-    elapsed_seconds = time.time() - st.session_state.start_time
-    elapsed_minutes = elapsed_seconds / 60
-    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
-    savings_per_minute = avg_downtime_cost * 0.38
-    total_savings = elapsed_minutes * savings_per_minute
-    avoided_stops = int(elapsed_minutes / 45)
-    avoided_transports = int(elapsed_minutes / 28)
+        elapsed_seconds = time.time() - st.session_state.start_time
+        elapsed_minutes = elapsed_seconds / 60
+        avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
+        savings_per_minute = avg_downtime_cost * 0.38
+        total_savings = elapsed_minutes * savings_per_minute
+        avoided_stops = int(elapsed_minutes / 45)
+        avoided_transports = int(elapsed_minutes / 28)
 
-    st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #064e3b, #065f46);
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg, #064e3b, #065f46);
                 border:1px solid #10b981; border-radius:16px;
                 padding:18px; margin-bottom:16px;">
         <div style="font-size:13px; color:#6ee7b7; 
