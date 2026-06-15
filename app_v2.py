@@ -2865,6 +2865,7 @@ Sei präzise und professionell.
                     response = requests.post(
                         url,
                         json=payload,
+                        params={"key": GEMINI_API_KEY},
                         timeout=15
                     )
 
