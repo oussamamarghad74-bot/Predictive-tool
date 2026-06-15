@@ -1514,8 +1514,28 @@ with tab1:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    def calculate_domino_effect(fleet, machine_id):
-    affected = fleet[fleet["Maschinen_ID"] != machine_id].copy()
+
+def calculate_domino_effect(fleet, machine_id):
+    domino_row = fleet[fleet["Maschine"] == machine_id]
+    if domino_row.empty:
+        return pd.DataFrame()
+    
+    zelle = domino_row.iloc[0]["Zelle"]
+    
+    affected = fleet[fleet["Maschine"] != machine_id].copy()
+    
+    affected["Impact_Score"] = affected.apply(
+        lambda row: row["Stillstandskosten_EUR_min"] * (1.5 if row["Zelle"] == zelle else 0.8),
+        axis=1
+    )
+    affected["Gründe"] = affected.apply(
+        lambda row: "Gleiche Zelle – direkte Abhängigkeit" if row["Zelle"] == zelle else "Indirekte Abhängigkeit",
+        axis=1
+    )
+    affected = affected.sort_values("Impact_Score", ascending=False)
+    return affected
+
+    domino_df = calculate_domino_effect(fleet, domino_machine)
     
     # احسب Impact Score بناءً على التكلفة والزنجير
     domino_row = fleet[fleet["Maschinen_ID"] == machine_id]
