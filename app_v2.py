@@ -2768,7 +2768,6 @@ Gabelstapler Predictive Maintenance (Erweiterung)
 # =========================================================
 # Tab 6: KI Chat Assistant
 # ========================================================= 
-
 with tab6:
     st.header("🤖 KI-Assistent – Powered by Gemini AI")
 
@@ -2875,7 +2874,6 @@ Sei präzise und professionell.
                         antwort = f"⚠️ API Fehler: {response.status_code}\n{response.text}"
                     else:
                         antwort = f"⚠️ API Fehler: {response.status_code}"
-
                 except Exception as e:
                     antwort = f"⚠️ Verbindungsfehler: {str(e)}"
 
