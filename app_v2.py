@@ -2865,7 +2865,14 @@ Sei präzise und professionell.
 
                     if response.status_code == 200:
                         data = response.json()
-                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                        try:
+                            antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                            if not antwort or antwort.strip() == "":
+                                antwort = "⚠️ Keine Antwort erhalten. Bitte erneut versuchen."
+                        except (KeyError, IndexError) as e:
+                            antwort = f"⚠️ Fehler beim Lesen der Antwort: {str(e)}\n\nAPI Response: {str(data)}"
+                    else:
+                        antwort = f"⚠️ API Fehler: {response.status_code}\n{response.text}"
                     else:
                         antwort = f"⚠️ API Fehler: {response.status_code}"
 
