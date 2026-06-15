@@ -2770,34 +2770,32 @@ Gabelstapler Predictive Maintenance (Erweiterung)
 # ========================================================= 
 
 with tab6:
-    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
+    st.header("🤖 KI-Assistent – Powered by Gemini AI")
 
     st.markdown("""
     <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
                 border:1px solid #6366f1; border-radius:12px; padding:12px;
                 margin-bottom:16px;">
         <div style="color:#a5b4fc; font-size:13px;">
-            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
+            🧠 Dieser Assistent ist mit Google Gemini AI verbunden und kennt
             alle aktuellen Maschinendaten von FertigungsTech GmbH.
             Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ← هنا ضع API Key الخاص بك
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # بناء ملخص بيانات المصنع
     def build_factory_context():
         kritisch = fleet[fleet["Entscheidung"].isin([
             "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
         ])]
-        
+
         context = f"""
-Du bist der KI-Assistent des Predictive Tool Logistics Systems 
+Du bist der KI-Assistent des Predictive Tool Logistics Systems
 der FertigungsTech GmbH – Werk 1, München.
 
 AKTUELLER FABRIKSTATUS:
@@ -2810,7 +2808,7 @@ AKTUELLER FABRIKSTATUS:
 KRITISCHE MASCHINEN:
 {kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
 
-ALLE MASCHINEN ÜBERSICHT:
+ALLE MASCHINEN:
 {fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
 
 Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
@@ -2818,15 +2816,13 @@ Sei präzise und professionell.
         """
         return context
 
-    # عرض سجل المحادثة
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # حقل الإدخال
     frage = st.chat_input(
         "Frage auf Deutsch, Englisch oder Arabisch...",
-        key="gemini_chat_input"
+        key="gemini_chat_t6"
     )
 
     if frage:
@@ -2843,15 +2839,14 @@ Sei präzise und professionell.
                 try:
                     import requests
 
-                    factory_context = build_factory_context()
-
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+
                     payload = {
                         "contents": [
                             {
                                 "parts": [
                                     {
-                                        "text": f"{factory_context}\n\nFrage: {frage}"
+                                        "text": f"{build_factory_context()}\n\nFrage: {frage}"
                                     }
                                 ]
                             }
@@ -2865,7 +2860,6 @@ Sei präzise und professionell.
                     response = requests.post(
                         url,
                         json=payload,
-                        params={"key": GEMINI_API_KEY},
                         timeout=15
                     )
 
@@ -2873,7 +2867,7 @@ Sei präzise und professionell.
                         data = response.json()
                         antwort = data["candidates"][0]["content"]["parts"][0]["text"]
                     else:
-                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
+                        antwort = f"⚠️ API Fehler: {response.status_code}"
 
                 except Exception as e:
                     antwort = f"⚠️ Verbindungsfehler: {str(e)}"
@@ -2885,9 +2879,8 @@ Sei präzise und professionell.
             "content": antwort
         })
 
-    # زر مسح المحادثة
     col_chat, col_clear = st.columns([4, 1])
     with col_clear:
-        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
+        if st.button("🗑️ Löschen", key="clear_chat_t6"):
             st.session_state.chat_history = []
             st.rerun()
