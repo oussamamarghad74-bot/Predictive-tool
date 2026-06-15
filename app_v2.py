@@ -2765,3 +2765,128 @@ Gabelstapler Predictive Maintenance (Erweiterung)
     })
 
     st.dataframe(tech, use_container_width=True, hide_index=True)
+# =========================================================
+# Tab 6: KI Chat Assistant
+# ========================================================= 
+with tab9:
+    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
+
+    st.markdown("""
+    <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
+                border:1px solid #6366f1; border-radius:12px; padding:12px;
+                margin-bottom:16px;">
+        <div style="color:#a5b4fc; font-size:13px;">
+            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
+            alle aktuellen Maschinendaten von FertigungsTech GmbH.
+            Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ← هنا ضع API Key الخاص بك
+    GEMINI_API_KEY = "ضع_API_Key_هنا"
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # بناء ملخص بيانات المصنع
+    def build_factory_context():
+        kritisch = fleet[fleet["Entscheidung"].isin([
+            "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
+        ])]
+        
+        context = f"""
+Du bist der KI-Assistent des Predictive Tool Logistics Systems 
+der FertigungsTech GmbH – Werk 1, München.
+
+AKTUELLER FABRIKSTATUS:
+- Gesamtmaschinen: {len(fleet)}
+- Kritische Maschinen: {len(kritisch)}
+- Durchschnittliche RUL: {fleet['RUL_min'].mean():.1f} min
+- Risiko-Index: {fleet['Risk_Score'].sum():.0f}
+- Aktuelle Schicht: {get_current_shift()}
+
+KRITISCHE MASCHINEN:
+{kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
+
+ALLE MASCHINEN ÜBERSICHT:
+{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
+
+Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
+Sei präzise und professionell.
+        """
+        return context
+
+    # عرض سجل المحادثة
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # حقل الإدخال
+    frage = st.chat_input(
+        "Frage auf Deutsch, Englisch oder Arabisch...",
+        key="gemini_chat_input"
+    )
+
+    if frage:
+        st.session_state.chat_history.append({
+            "role": "user",
+            "content": frage
+        })
+
+        with st.chat_message("user"):
+            st.markdown(frage)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Gemini AI analysiert..."):
+                try:
+                    import requests
+
+                    factory_context = build_factory_context()
+
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+                    payload = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {
+                                        "text": f"{factory_context}\n\nFrage: {frage}"
+                                    }
+                                ]
+                            }
+                        ],
+                        "generationConfig": {
+                            "temperature": 0.7,
+                            "maxOutputTokens": 1000
+                        }
+                    }
+
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        timeout=15
+                    )
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                    else:
+                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
+
+                except Exception as e:
+                    antwort = f"⚠️ Verbindungsfehler: {str(e)}"
+
+                st.markdown(antwort)
+
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": antwort
+        })
+
+    # زر مسح المحادثة
+    col_chat, col_clear = st.columns([4, 1])
+    with col_clear:
+        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
