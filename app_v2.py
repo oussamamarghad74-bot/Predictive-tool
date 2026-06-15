@@ -1344,6 +1344,30 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 # =========================================================
 # Tab 1: Fertigungs-Leitwarte
 # =========================================================
+# =========================================================
+# Tab 1: Fertigungs-Leitwarte
+# =========================================================
+
+def calculate_domino_effect(fleet, machine_id):
+    domino_row = fleet[fleet["Maschine"] == machine_id]
+    if domino_row.empty:
+        return pd.DataFrame()
+
+    zelle = domino_row.iloc[0]["Zelle"]
+
+    affected = fleet[fleet["Maschine"] != machine_id].copy()
+
+    affected["Impact_Score"] = affected.apply(
+        lambda row: row["Stillstandskosten_EUR_min"] * (1.5 if row["Zelle"] == zelle else 0.8),
+        axis=1
+    )
+    affected["Gründe"] = affected.apply(
+        lambda row: "Gleiche Zelle – direkte Abhängigkeit" if row["Zelle"] == zelle else "Indirekte Abhängigkeit",
+        axis=1
+    )
+    affected = affected.sort_values("Impact_Score", ascending=False)
+    return affected
+
 
 with tab1:
     st.header("🏭 Smart Factory Fertigungs-Leitwarte")
@@ -1353,6 +1377,7 @@ with tab1:
     # ============================
     if 'start_time' not in st.session_state:
         st.session_state.start_time = time.time()
+
     elapsed_seconds = time.time() - st.session_state.start_time
     elapsed_minutes = elapsed_seconds / 60
     avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
@@ -1365,11 +1390,11 @@ with tab1:
     <div style="background:linear-gradient(135deg, #064e3b, #065f46);
                 border:1px solid #10b981; border-radius:16px;
                 padding:18px; margin-bottom:16px;">
-    <div style="font-size:13px; color:#6ee7b7; 
+        <div style="font-size:13px; color:#6ee7b7;
                     letter-spacing:2px; margin-bottom:10px;">
             💰 LIVE EINSPARUNGSRECHNER – SEIT SYSTEMSTART
-    </div>
-    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        </div>
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
             <div>
                 <div style="font-size:11px; color:#6ee7b7;">💶 Eingesparte Kosten</div>
                 <div style="font-size:36px; font-weight:800; color:white;">
@@ -1474,8 +1499,10 @@ with tab1:
 
     st.subheader("Entscheidungslegende")
     legend_cols = st.columns(4)
-    decisions = ["MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
-                 "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"]
+    decisions = [
+        "MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
+        "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"
+    ]
     for i, d in enumerate(decisions):
         with legend_cols[i % 4]:
             st.markdown(badge(d, DECISION_COLORS[d]), unsafe_allow_html=True)
@@ -1507,50 +1534,14 @@ with tab1:
             {domino_machine} – {machine_info_d.get('name', '')}
         </div>
         <div style="color:#fca5a5; font-size:13px;">
-            {machine_info_d.get('typ', '')} | 
-            {domino_row['Zelle']} | 
-            Werkzeug: {domino_row['Werkzeug_ID']} | 
+            {machine_info_d.get('typ', '')} |
+            {domino_row['Zelle']} |
+            Werkzeug: {domino_row['Werkzeug_ID']} |
             Zustand: {domino_row['KI_Zustand']}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-def calculate_domino_effect(fleet, machine_id):
-    domino_row = fleet[fleet["Maschine"] == machine_id]
-    if domino_row.empty:
-        return pd.DataFrame()
-    
-    zelle = domino_row.iloc[0]["Zelle"]
-    
-    affected = fleet[fleet["Maschine"] != machine_id].copy()
-    
-    affected["Impact_Score"] = affected.apply(
-        lambda row: row["Stillstandskosten_EUR_min"] * (1.5 if row["Zelle"] == zelle else 0.8),
-        axis=1
-    )
-    affected["Gründe"] = affected.apply(
-        lambda row: "Gleiche Zelle – direkte Abhängigkeit" if row["Zelle"] == zelle else "Indirekte Abhängigkeit",
-        axis=1
-    )
-    affected = affected.sort_values("Impact_Score", ascending=False)
-    return affected
-
-    domino_df = calculate_domino_effect(fleet, domino_machine)
-    
-    # احسب Impact Score بناءً على التكلفة والزنجير
-    domino_row = fleet[fleet["Maschinen_ID"] == machine_id]
-    if domino_row.empty:
-        return pd.DataFrame()
-    
-    zelle = domino_row.iloc[0]["Zelle"]
-    
-    affected["Impact_Score"] = affected.apply(
-        lambda row: row["Stillstandskosten_EUR_min"] * (1.5 if row["Zelle"] == zelle else 0.8),
-        axis=1
-    )
-    
-    affected = affected.sort_values("Impact_Score", ascending=False)
-    return affected
     domino_df = calculate_domino_effect(fleet, domino_machine)
 
     if domino_df.empty:
@@ -1559,30 +1550,32 @@ def calculate_domino_effect(fleet, machine_id):
         col_d1, col_d2, col_d3, col_d4 = st.columns(4)
         total_cost = domino_df["Stillstandskosten_EUR_min"].sum()
         high_impact = len(domino_df[domino_df["Impact_Score"] >= 50])
-        same_cell = len(domino_df[domino_df["Zelle"] == domino_row["Zelle"]])
+        same_cell_count = len(domino_df[domino_df["Zelle"] == domino_row["Zelle"]])
 
         with col_d1:
             kpi_card("Betroffene Maschinen", len(domino_df),
-                    "direkt beeinflusst", "#ef4444")
+                     "direkt beeinflusst", "#ef4444")
         with col_d2:
             kpi_card("Hohes Risiko", high_impact,
-                    "Impact Score ≥ 50", "#f59e0b")
+                     "Impact Score ≥ 50", "#f59e0b")
         with col_d3:
-            kpi_card("Gleiche Zelle", same_cell,
-                    "kritischste Abhängigkeit", "#7c3aed")
+            kpi_card("Gleiche Zelle", same_cell_count,
+                     "kritischste Abhängigkeit", "#7c3aed")
         with col_d4:
-            kpi_card("Kosten-Risiko", f"{total_cost} €/min",
-                    "bei Kettenreaktion", "#dc2626")
+            kpi_card("Kosten-Risiko", f"{total_cost:.0f} €/min",
+                     "bei Kettenreaktion", "#dc2626")
 
         col_left, col_right = st.columns([1.2, 1])
+
         with col_left:
             st.dataframe(
                 domino_df[["Maschine", "Zelle", "KI_Zustand",
-                           "RUL_min", "Impact_Score", "Gründe"]],
+                            "RUL_min", "Impact_Score", "Gründe"]],
                 use_container_width=True,
                 height=300,
                 hide_index=True
             )
+
         with col_right:
             fig_domino = px.bar(
                 domino_df.head(10),
@@ -1600,6 +1593,7 @@ def calculate_domino_effect(fleet, machine_id):
                 height=300
             )
             st.plotly_chart(fig_domino, use_container_width=True)
+
 # =========================================================
 # Tab 2: Maschinen und KI
 # =========================================================
