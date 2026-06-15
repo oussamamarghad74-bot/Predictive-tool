@@ -1352,7 +1352,7 @@ with tab1:
     # Cost Savings Live Counter
     # ============================
     if 'start_time' not in st.session_state:
-    st.session_state.start_time = time.time()
+        st.session_state.start_time = time.time()
     elapsed_seconds = time.time() - st.session_state.start_time
     elapsed_minutes = elapsed_seconds / 60
     avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
