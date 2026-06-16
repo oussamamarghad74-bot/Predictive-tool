@@ -2782,11 +2782,26 @@ with tab6:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    try:
+        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+        api_available = True
+    except KeyError:
+        GEMINI_API_KEY = ""
+        api_available = False
+        st.warning("⚠️ API Key nicht gefunden. Bitte in .streamlit/secrets.toml konfigurieren.")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+
+    def get_current_shift():
+        from datetime import datetime
+        hour = datetime.now().hour
+        if 6 <= hour < 14:
+            return "Frühschicht (06:00-14:00)"
+        elif 14 <= hour < 22:
+            return "Spätschicht (14:00-22:00)"
+        else:
+            return "Nachtschicht (22:00-06:00)"
 
     def build_factory_context():
         kritisch = fleet[fleet["Entscheidung"].isin([
@@ -2807,24 +2822,23 @@ AKTUELLER FABRIKSTATUS:
 KRITISCHE MASCHINEN:
 {kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
 
-ALLE MASCHINEN:
-{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
-
 Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
-Sei präzise und professionell.
+Sei präzise und professionell. Antworte in maximal 150 Wörtern.
         """
         return context
 
+    # عرض سجل المحادثة
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
+    # حقل إدخال السؤال
     frage = st.chat_input(
         "Frage auf Deutsch, Englisch oder Arabisch...",
         key="gemini_chat_t6"
     )
 
-    if frage:
+    if frage and api_available:
         st.session_state.chat_history.append({
             "role": "user",
             "content": frage
@@ -2834,11 +2848,9 @@ Sei präzise und professionell.
             st.markdown(frage)
 
         with st.chat_message("assistant"):
-            with st.spinner("Gemini AI analysiert..."):
+            with st.spinner("🤖 Gemini AI analysiert..."):
                 try:
-                    import requests
-
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
                     payload = {
                         "contents": [
@@ -2852,7 +2864,9 @@ Sei präzise und professionell.
                         ],
                         "generationConfig": {
                             "temperature": 0.7,
-                            "maxOutputTokens": 1000
+                            "maxOutputTokens": 1000,
+                            "topP": 0.8,
+                            "topK": 40
                         }
                     }
 
@@ -2869,7 +2883,7 @@ Sei präzise und professionell.
                             if not antwort or antwort.strip() == "":
                                 antwort = "⚠️ Keine Antwort erhalten. Bitte erneut versuchen."
                         except (KeyError, IndexError) as e:
-                            antwort = f"⚠️ Fehler beim Lesen der Antwort: {str(e)}\n\nAPI Response: {str(data)}"
+                            antwort = f"⚠️ Fehler beim Lesen der Antwort: {str(e)}"
                     else:
                         antwort = f"⚠️ API Fehler: {response.status_code}\n{response.text}"
                 except Exception as e:
@@ -2882,8 +2896,18 @@ Sei präzise und professionell.
             "content": antwort
         })
 
+    # أزرار التحكم
     col_chat, col_clear = st.columns([4, 1])
     with col_clear:
         if st.button("🗑️ Löschen", key="clear_chat_t6"):
             st.session_state.chat_history = []
             st.rerun()
+
+    # عرض إحصائيات المحادثة
+    if len(st.session_state.chat_history) > 0:
+        st.markdown(f"""
+        <div style="margin-top:20px; padding:10px; background:#1e293b; 
+                    border-radius:8px; text-align:center; color:#94a3b8;">
+            💬 {len(st.session_state.chat_history)} Nachrichten in dieser Sitzung
+        </div>
+        """, unsafe_allow_html=True)
