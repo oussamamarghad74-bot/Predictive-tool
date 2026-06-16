@@ -2769,47 +2769,33 @@ Gabelstapler Predictive Maintenance (Erweiterung)
 # Tab 6: KI Chat Assistant
 # ========================================================= 
 with tab6:
-    st.header("🤖 KI-Assistent – Powered by Gemini AI")
+    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
 
     st.markdown("""
     <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
                 border:1px solid #6366f1; border-radius:12px; padding:12px;
                 margin-bottom:16px;">
         <div style="color:#a5b4fc; font-size:13px;">
-            🧠 Dieser Assistent ist mit Google Gemini AI verbunden und kennt
+            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
             alle aktuellen Maschinendaten von FertigungsTech GmbH.
             Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
         </div>
     </div>
     """, unsafe_allow_html=True)
-    try:
-        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-        api_available = True
-    except KeyError:
-        GEMINI_API_KEY = ""
-        api_available = False
-        st.warning("⚠️ API Key nicht gefunden. Bitte in .streamlit/secrets.toml konfigurieren.")
+
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    def get_current_shift():
-        from datetime import datetime
-        hour = datetime.now().hour
-        if 6 <= hour < 14:
-            return "Frühschicht (06:00-14:00)"
-        elif 14 <= hour < 22:
-            return "Spätschicht (14:00-22:00)"
-        else:
-            return "Nachtschicht (22:00-06:00)"
-
+    # بناء ملخص بيانات المصنع
     def build_factory_context():
         kritisch = fleet[fleet["Entscheidung"].isin([
             "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
         ])]
-
+        
         context = f"""
-Du bist der KI-Assistent des Predictive Tool Logistics Systems
+Du bist der KI-Assistent des Predictive Tool Logistics Systems 
 der FertigungsTech GmbH – Werk 1, München.
 
 AKTUELLER FABRIKSTATUS:
@@ -2822,8 +2808,11 @@ AKTUELLER FABRIKSTATUS:
 KRITISCHE MASCHINEN:
 {kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
 
+ALLE MASCHINEN ÜBERSICHT:
+{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
+
 Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
-Sei präzise und professionell. Antworte in maximal 150 Wörtern.
+Sei präzise und professionell.
         """
         return context
 
@@ -2832,13 +2821,13 @@ Sei präzise und professionell. Antworte in maximal 150 Wörtern.
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # حقل إدخال السؤال
+    # حقل الإدخال
     frage = st.chat_input(
         "Frage auf Deutsch, Englisch oder Arabisch...",
-        key="gemini_chat_t6"
+        key="gemini_chat_input"
     )
 
-    if frage and api_available:
+    if frage:
         st.session_state.chat_history.append({
             "role": "user",
             "content": frage
@@ -2848,8 +2837,12 @@ Sei präzise und professionell. Antworte in maximal 150 Wörtern.
             st.markdown(frage)
 
         with st.chat_message("assistant"):
-            with st.spinner("🤖 Gemini AI analysiert..."):
+            with st.spinner("Gemini AI analysiert..."):
                 try:
+                    import requests
+
+                    factory_context = build_factory_context()
+
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
                     payload = {
@@ -2857,16 +2850,14 @@ Sei präzise und professionell. Antworte in maximal 150 Wörtern.
                             {
                                 "parts": [
                                     {
-                                        "text": f"{build_factory_context()}\n\nFrage: {frage}"
+                                        "text": f"{factory_context}\n\nFrage: {frage}"
                                     }
                                 ]
                             }
                         ],
                         "generationConfig": {
                             "temperature": 0.7,
-                            "maxOutputTokens": 1000,
-                            "topP": 0.8,
-                            "topK": 40
+                            "maxOutputTokens": 1000
                         }
                     }
 
@@ -2878,14 +2869,10 @@ Sei präzise und professionell. Antworte in maximal 150 Wörtern.
 
                     if response.status_code == 200:
                         data = response.json()
-                        try:
-                            antwort = data["candidates"][0]["content"]["parts"][0]["text"]
-                            if not antwort or antwort.strip() == "":
-                                antwort = "⚠️ Keine Antwort erhalten. Bitte erneut versuchen."
-                        except (KeyError, IndexError) as e:
-                            antwort = f"⚠️ Fehler beim Lesen der Antwort: {str(e)}"
+                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
                     else:
-                        antwort = f"⚠️ API Fehler: {response.status_code}\n{response.text}"
+                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
+
                 except Exception as e:
                     antwort = f"⚠️ Verbindungsfehler: {str(e)}"
 
@@ -2896,18 +2883,9 @@ Sei präzise und professionell. Antworte in maximal 150 Wörtern.
             "content": antwort
         })
 
-    # أزرار التحكم
+    # زر مسح المحادثة
     col_chat, col_clear = st.columns([4, 1])
     with col_clear:
-        if st.button("🗑️ Löschen", key="clear_chat_t6"):
+        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
             st.session_state.chat_history = []
             st.rerun()
-
-    # عرض إحصائيات المحادثة
-    if len(st.session_state.chat_history) > 0:
-        st.markdown(f"""
-        <div style="margin-top:20px; padding:10px; background:#1e293b; 
-                    border-radius:8px; text-align:center; color:#94a3b8;">
-            💬 {len(st.session_state.chat_history)} Nachrichten in dieser Sitzung
-        </div>
-        """, unsafe_allow_html=True)
