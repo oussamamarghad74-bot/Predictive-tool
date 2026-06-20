@@ -337,7 +337,7 @@ st.markdown("""
         color: #f8fafc;
     }
 
-    p, label, div {
+    p, label {
         color: #e5e7eb;
     }
 
