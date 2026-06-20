@@ -255,49 +255,7 @@ def get_current_shift():
     else:
         return "Nachtschicht 22:00–06:00"
 
-# =========================================================
-# Digital Twin Soundtrack - Acoustic Fingerprint
-# =========================================================
 
-MACHINE_FINGERPRINTS = {}
-
-def learn_acoustic_fingerprint(machine_id, y, sr=SR):
-    """
-    تعلم البصمة الصوتية الأساسية لكل آلة
-    عندما تكون في حالة Healthy
-    """
-    features = extract_features(y)
-    MACHINE_FINGERPRINTS[machine_id] = {
-        "baseline": features,
-        "timestamp": pd.Timestamp.now(),
-        "learned": True
-    }
-    return features
-
-def compare_to_fingerprint(machine_id, current_features):
-    """
-    قارن الصوت الحالي مع البصمة الأساسية
-    وأعط نسبة الانحراف
-    """
-    if machine_id not in MACHINE_FINGERPRINTS:
-        return None, "Keine Baseline"
-    
-    baseline = MACHINE_FINGERPRINTS[machine_id]["baseline"]
-    
-    # حساب الانحراف بين الصوت الحالي والبصمة
-    deviation = np.linalg.norm(current_features - baseline)
-    deviation_pct = min(deviation / (np.linalg.norm(baseline) + 1e-9) * 100, 100)
-    
-    if deviation_pct < 15:
-        status = "✅ Normal"
-    elif deviation_pct < 35:
-        status = "⚠️ Leichte Abweichung"
-    elif deviation_pct < 60:
-        status = "🔶 Starke Abweichung"
-    else:
-        status = "🚨 Kritische Abweichung"
-    
-    return round(deviation_pct, 1), status
 # =========================================================
 # Page Config
 # =========================================================
