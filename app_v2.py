@@ -2410,7 +2410,7 @@ with tab6:
     """, unsafe_allow_html=True)
 
     try:
-        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+        GEMINI_API_KEY = st.secrets["AQ.Ab8RN6LuCcnYtOWaDmrUseE13ppnI-Dh8q7FnlJLi9U31jpTqw"]
     except:
         GEMINI_API_KEY = ""
         st.warning("""
