@@ -78,7 +78,201 @@ WARTUNG_GRENZEN = {
     "Hydraulik": {"kritisch": 25, "warnung": 80, "max": 250},
     "Bremsen": {"kritisch": 10, "warnung": 35, "max": 150}
 }
+# =========================================================
+# Acoustic Engine – Forklift Motor Sound Generation & Analysis
+# =========================================================
 
+def generate_forklift_sound(
+    state,
+    motor_typ="Elektro",
+    last_kg=2000,
+    betriebsstunden=2000,
+    factory_noise=0.04,
+    seed=0
+):
+    rng = np.random.default_rng(seed)
+    t = np.linspace(0, DURATION, int(SR * DURATION), endpoint=False)
+    y = np.zeros_like(t)
+
+    last_faktor = 0.8 + (last_kg / 2500) * 0.4
+
+    if "Diesel" in motor_typ:
+        base_freq = 35
+        y += 0.18 * np.sin(2 * np.pi * base_freq * t)
+        y += 0.10 * np.sin(2 * np.pi * base_freq * 2 * t)
+        y += 0.07 * np.sin(2 * np.pi * base_freq * 4 * t)
+        y += 0.05 * rng.normal(0, 1, len(t))
+    elif "LPG" in motor_typ or "Gas" in motor_typ:
+        base_freq = 42
+        y += 0.15 * np.sin(2 * np.pi * base_freq * t)
+        y += 0.08 * np.sin(2 * np.pi * base_freq * 3 * t)
+    else:
+        base_freq = 60
+        y += 0.10 * last_faktor * np.sin(2 * np.pi * base_freq * t)
+        y += 0.06 * np.sin(2 * np.pi * base_freq * 2 * t)
+        y += 0.04 * np.sin(2 * np.pi * 1800 * t)
+
+    y += 0.05 * np.sin(2 * np.pi * 75 * t) * (1 + 0.3 * np.sin(2 * np.pi * 1.5 * t))
+    y += 0.03 * last_faktor * np.sin(2 * np.pi * 18 * t)
+
+    alters_rauschen = min(betriebsstunden / 8000, 1.0) * 0.02
+    y += rng.normal(0, alters_rauschen, len(t))
+    y += rng.normal(0, factory_noise, len(t))
+
+    if state == "Gut":
+        y += rng.normal(0, 0.010, len(t))
+    elif state == "Warnung":
+        chatter_freq = 900 + rng.normal(0, 60)
+        y += 0.06 * np.sin(2 * np.pi * chatter_freq * t)
+        y += rng.normal(0, 0.022, len(t))
+        for _ in range(3):
+            start = rng.integers(0, len(t) - 250)
+            y[start:start + 250] += np.hanning(250) * rng.normal(0, 0.08, 250)
+    elif state == "Kritisch":
+        chatter_freq = 1500 + rng.normal(0, 100)
+        y += 0.12 * np.sin(2 * np.pi * chatter_freq * t)
+        y += 0.08 * np.sin(2 * np.pi * (chatter_freq + 400) * t)
+        y += rng.normal(0, 0.05, len(t))
+        for _ in range(8):
+            start = rng.integers(0, len(t) - 300)
+            y[start:start + 300] += np.hanning(300) * rng.normal(0, 0.18, 300)
+    elif state == "Ausfall":
+        chatter_freq = 2200 + rng.normal(0, 150)
+        y += 0.20 * np.sin(2 * np.pi * chatter_freq * t)
+        y += 0.15 * np.sin(2 * np.pi * 3000 * t)
+        y += rng.normal(0, 0.09, len(t))
+        for _ in range(18):
+            start = rng.integers(0, len(t) - 260)
+            y[start:start + 260] += np.hanning(260) * rng.normal(0, 0.35, 260)
+
+    y = y / (np.max(np.abs(y)) + 1e-9)
+    return y.astype(np.float32)
+
+
+def extract_audio_features(y, sr=SR):
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=16)
+    centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+    bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+    rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
+    zcr = librosa.feature.zero_crossing_rate(y)
+    rms = librosa.feature.rms(y=y)
+    flatness = librosa.feature.spectral_flatness(y=y)
+
+    features = []
+    features.extend(np.mean(mfcc, axis=1))
+    features.extend(np.std(mfcc, axis=1))
+
+    for f in [centroid, bandwidth, rolloff, zcr, rms, flatness]:
+        features.append(np.mean(f))
+        features.append(np.std(f))
+
+    return np.array(features)
+
+
+def audio_to_wav_bytes(y, sr=SR):
+    buffer = io.BytesIO()
+    sf.write(buffer, y, sr, format="WAV")
+    return buffer.getvalue()
+
+
+@st.cache_data
+def create_acoustic_training_dataset(n_per_class=70):
+    X = []
+    y_labels = []
+    seed = 2000
+    rng = np.random.default_rng(77)
+
+    motor_typen = ["Elektro", "Diesel", "LPG Gas"]
+
+    for state in CLASS_ORDER:
+        for _ in range(n_per_class):
+            motor_typ = rng.choice(motor_typen)
+            last_kg = rng.integers(1600, 2500)
+            betriebsstunden = rng.integers(500, 8000)
+            noise = rng.uniform(0.02, 0.08)
+
+            audio = generate_forklift_sound(
+                state=state,
+                motor_typ=motor_typ,
+                last_kg=last_kg,
+                betriebsstunden=betriebsstunden,
+                factory_noise=noise,
+                seed=seed
+            )
+
+            feat = extract_audio_features(audio)
+            X.append(feat)
+            y_labels.append(state)
+            seed += 1
+
+    return np.vstack(X), np.array(y_labels)
+
+
+@st.cache_resource
+def train_acoustic_model():
+    X, y = create_acoustic_training_dataset()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42, stratify=y
+    )
+
+    model = RandomForestClassifier(
+        n_estimators=240,
+        max_depth=12,
+        random_state=42,
+        class_weight="balanced"
+    )
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred, labels=CLASS_ORDER)
+
+    return model, acc, cm
+
+
+def plot_audio_waveform(y, sr=SR):
+    fig, ax = plt.subplots(figsize=(9, 2.4))
+    fig.patch.set_facecolor("#111827")
+    ax.set_facecolor("#111827")
+    time_axis = np.arange(len(y)) / sr
+    ax.plot(time_axis, y, color="#38bdf8", linewidth=0.9)
+    ax.set_title("Waveform – Motorgeräusch", color="white")
+    ax.set_xlabel("Zeit [s]", color="white")
+    ax.set_ylabel("Amplitude", color="white")
+    ax.tick_params(colors="white")
+    ax.grid(True, alpha=0.25)
+    return fig
+
+
+def plot_audio_spectrum(y, sr=SR):
+    fig, ax = plt.subplots(figsize=(9, 2.4))
+    fig.patch.set_facecolor("#111827")
+    ax.set_facecolor("#111827")
+    freqs = np.fft.rfftfreq(len(y), 1 / sr)
+    spectrum = np.abs(np.fft.rfft(y))
+    ax.plot(freqs, spectrum, color="#a78bfa", linewidth=0.9)
+    ax.set_title("Frequenzspektrum", color="white")
+    ax.set_xlabel("Frequenz [Hz]", color="white")
+    ax.set_ylabel("Magnitude", color="white")
+    ax.tick_params(colors="white")
+    ax.grid(True, alpha=0.25)
+    ax.set_xlim(0, sr / 2)
+    return fig
+
+
+def plot_audio_mel(y, sr=SR):
+    fig, ax = plt.subplots(figsize=(9, 2.8))
+    fig.patch.set_facecolor("#111827")
+    ax.set_facecolor("#111827")
+    S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=64, fmax=sr / 2)
+    S_db = librosa.power_to_db(S, ref=np.max)
+    ax.imshow(S_db, aspect="auto", origin="lower", cmap="magma")
+    ax.set_title("Mel-Spektrogramm", color="white")
+    ax.set_xlabel("Zeitfenster", color="white")
+    ax.set_ylabel("Mel-Bänder", color="white")
+    ax.tick_params(colors="white")
+    return fig
 # =========================================================
 # Factory Info – LogisTech GmbH
 # =========================================================
@@ -639,59 +833,39 @@ def calculate_wartung_vorlaufzeit(row, sicherheitsmarge,
 # =========================================================
 # KI Klassifikation (vereinfacht ohne Audio)
 # =========================================================
-
-def classify_stapler_zustand(row, global_noise, seed=0):
-    rng = np.random.default_rng(seed)
-
-    sensor = get_sensor_reading(
-        stapler_id=row["Stapler"],
-        zustand=row["Ist_Zustand"],
+def classify_stapler_zustand(row, global_noise, model, seed=0):
+    """
+    Klassifiziert den Zustand basierend auf dem akustischen
+    Motorsignal (KI-Modell: Random Forest auf MFCC + Spektral-Features).
+    """
+    audio = generate_forklift_sound(
+        state=row["Ist_Zustand"],
+        motor_typ=row["Batterietyp"] if "Diesel" in str(row.get("Batterietyp","")) or "LPG" in str(row.get("Batterietyp","")) else "Elektro",
+        last_kg=row["Tragkraft_kg"],
         betriebsstunden=row["Betriebsstunden"],
+        factory_noise=global_noise,
         seed=seed
     )
 
-    vib = sensor["vibration_mm_s"]
-    temp = sensor["motor_temp_c"]
-    batt = sensor["batterie_pct"]
-
-    noise = rng.normal(0, global_noise * 10)
-
-    score = (
-        (vib / 7.2) * 0.35 +
-        (temp / 95) * 0.30 +
-        ((100 - batt) / 100) * 0.35
-    ) + noise * 0.1
-
-    score = np.clip(score, 0, 1)
-
-    if score < 0.25:
-        pred = "Gut"
-        confidence = round(0.85 + rng.uniform(0, 0.12), 3)
-    elif score < 0.50:
-        pred = "Warnung"
-        confidence = round(0.75 + rng.uniform(0, 0.15), 3)
-    elif score < 0.75:
-        pred = "Kritisch"
-        confidence = round(0.70 + rng.uniform(0, 0.18), 3)
-    else:
-        pred = "Ausfall"
-        confidence = round(0.80 + rng.uniform(0, 0.15), 3)
+    features = extract_audio_features(audio).reshape(1, -1)
+    pred = model.predict(features)[0]
+    probas = model.predict_proba(features)[0]
+    confidence = float(np.max(probas))
 
     return pred, min(confidence, 0.99)
-
 
 # =========================================================
 # Fleet Evaluation
 # =========================================================
 
-def evaluate_gabelstapler_fleet(fleet_df, global_noise,
+def evaluate_gabelstapler_fleet(fleet_df, global_noise, model,
                                  sicherheitsmarge, techniker_queue,
                                  auto_threshold, manual_threshold, seed=999):
     rows = []
 
     for idx, row in fleet_df.iterrows():
         pred, confidence = classify_stapler_zustand(
-            row, global_noise, seed=seed + idx * 13
+            row, global_noise, model, seed=seed + idx * 13
         )
 
         komponenten_rul = estimate_komponenten_rul(
@@ -1138,7 +1312,8 @@ st.sidebar.caption(
 # =========================================================
 # Fleet Evaluation
 # =========================================================
-with st.spinner("🤖 KI analysiert Gabelstapler-Flotte..."):
+with st.spinner("🤖 KI trainiert Akustikmodell und analysiert Flotte..."):
+    acoustic_model, acoustic_accuracy, acoustic_cm = train_acoustic_model()
     gabelstapler_df = build_gabelstapler_fleet(
         n_stapler=n_stapler,
         scenario=scenario,
@@ -1147,6 +1322,7 @@ with st.spinner("🤖 KI analysiert Gabelstapler-Flotte..."):
     fleet = evaluate_gabelstapler_fleet(
         fleet_df=gabelstapler_df,
         global_noise=global_noise,
+        model=acoustic_model,
         sicherheitsmarge=sicherheitsmarge,
         techniker_queue=techniker_queue,
         auto_threshold=auto_threshold,
@@ -1728,6 +1904,93 @@ with tab2:
         st.info("🔔 Vorwarnung: Wartung bald erforderlich.")
     else:
         st.info("✅ Monitoring: Stapler läuft normal.")
+
+    st.markdown("---")
+
+    # ============================
+    # Akustische Analyse & KI
+    # ============================
+    st.subheader("🎧 Akustische Motoranalyse & KI-Diagnose")
+
+    audio_source = st.radio(
+        "Audioquelle wählen",
+        ["🔊 Simuliertes Motorgeräusch", "📁 Eigene Audiodatei hochladen"],
+        horizontal=True,
+        key="audio_source_t2"
+    )
+
+    if audio_source == "🔊 Simuliertes Motorgeräusch":
+        live_seed = int(time.time() / 5)
+        analysis_audio = generate_forklift_sound(
+            state=selected["Ist_Zustand"],
+            motor_typ=stapler_info.get("batterietyp", "Elektro"),
+            last_kg=stapler_info.get("tragkraft_kg", 2000),
+            betriebsstunden=selected["Betriebsstunden"],
+            factory_noise=global_noise,
+            seed=live_seed
+        )
+        st.caption(f"Simuliertes Motorgeräusch für {selected['Stapler']} – Zustand: {selected['Ist_Zustand']}")
+    else:
+        uploaded_audio = st.file_uploader(
+            "Audiodatei hochladen (.wav, .mp3)",
+            type=["wav", "mp3"],
+            key="audio_upload_t2"
+        )
+        if uploaded_audio is not None:
+            analysis_audio, _ = librosa.load(uploaded_audio, sr=SR, duration=DURATION)
+            st.caption(f"Hochgeladene Datei: {uploaded_audio.name}")
+        else:
+            st.info("Bitte eine Audiodatei hochladen, um die KI-Diagnose zu starten.")
+            analysis_audio = None
+
+    if analysis_audio is not None:
+        st.audio(audio_to_wav_bytes(analysis_audio), format="audio/wav")
+
+        if st.button("🔄 Analyse aktualisieren", key="refresh_audio_t2"):
+            st.rerun()
+
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            st.pyplot(plot_audio_waveform(analysis_audio))
+            st.pyplot(plot_audio_spectrum(analysis_audio))
+        with col_a2:
+            st.pyplot(plot_audio_mel(analysis_audio))
+
+            features_live = extract_audio_features(analysis_audio).reshape(1, -1)
+            probas_live = acoustic_model.predict_proba(features_live)[0]
+            pred_live = acoustic_model.classes_[np.argmax(probas_live)]
+
+            proba_df = pd.DataFrame({
+                "Zustand": acoustic_model.classes_,
+                "Wahrscheinlichkeit": probas_live
+            })
+            fig_prob = px.bar(
+                proba_df, x="Zustand", y="Wahrscheinlichkeit",
+                color="Zustand", color_discrete_map=STATE_COLORS,
+                title="KI-Diagnose – Wahrscheinlichkeiten", text="Wahrscheinlichkeit"
+            )
+            fig_prob.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+            fig_prob.update_layout(
+                paper_bgcolor="#111827", plot_bgcolor="#0f172a",
+                font=dict(color="white"), yaxis=dict(range=[0, 1])
+            )
+            st.plotly_chart(fig_prob, use_container_width=True)
+
+        col_k1, col_k2, col_k3 = st.columns(3)
+        with col_k1:
+            kpi_card("KI-Diagnose", pred_live, "Akustische Klassifikation", STATE_COLORS[pred_live])
+        with col_k2:
+            kpi_card("Confidence", f"{max(probas_live)*100:.1f}%", "Modellsicherheit", "#38bdf8")
+        with col_k3:
+            kpi_card("Modell-Genauigkeit", f"{acoustic_accuracy*100:.1f}%", "Random Forest – Testdaten", "#a855f7")
+
+        st.subheader("Confusion Matrix – Akustikmodell")
+        cm_df = pd.DataFrame(acoustic_cm, index=CLASS_ORDER, columns=CLASS_ORDER)
+        st.dataframe(cm_df, use_container_width=True)
+
+# =========================================================
+# Tab 3: Wartung & Planung
+# =========================================================
 
 # =========================================================
 # Tab 3: Wartung & Planung
