@@ -17,85 +17,234 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 # =========================================================
-# Global Settings
+# Global Settings – Gabelstapler Predictive Maintenance
 # =========================================================
 
-SR = 12000
-DURATION = 2.5
+# حالات الرافعة الشوكية
+CLASS_ORDER = ["Gut", "Warnung", "Kritisch", "Ausfall"]
 
-CLASS_ORDER = ["Healthy", "Warning", "Critical", "Replace"]
-
+# وقت الصيانة المتبقي بالساعات
 RUL_BASE = {
-    "Healthy": 95,
-    "Warning": 58,
-    "Critical": 30,
-    "Replace": 7
+    "Gut": 120,
+    "Warnung": 48,
+    "Kritisch": 12,
+    "Ausfall": 2
 }
 
 SEVERITY = {
-    "Healthy": 0,
-    "Warning": 1,
-    "Critical": 2,
-    "Replace": 3
+    "Gut": 0,
+    "Warnung": 1,
+    "Kritisch": 2,
+    "Ausfall": 3
 }
 
 STATE_COLORS = {
-    "Healthy": "#16a34a",
-    "Warning": "#f59e0b",
-    "Critical": "#ef4444",
-    "Replace": "#7f1d1d"
+    "Gut": "#16a34a",
+    "Warnung": "#f59e0b",
+    "Kritisch": "#ef4444",
+    "Ausfall": "#7f1d1d"
 }
 
 DECISION_COLORS = {
     "MONITORING": "#2563eb",
     "VORWARNUNG": "#7c3aed",
-    "AUTO_AUFTRAG": "#16a34a",
-    "BEDIENER_FREIGABE": "#f59e0b",
+    "WARTUNGSAUFTRAG": "#16a34a",
+    "TECHNIKER_FREIGABE": "#f59e0b",
     "UNSICHER_WARNUNG": "#fb7185",
     "SOFORT_STOPP": "#dc2626",
-    "BESTANDSRISIKO": "#b45309"
+    "TEILE_FEHLEN": "#b45309"
+}
+
+# أنواع المكونات التي نراقبها
+KOMPONENTEN = ["Batterie", "Motor", "Reifen", "Hydraulik", "Bremsen"]
+
+# ألوان المكونات
+KOMPONENTEN_COLORS = {
+    "Batterie": "#38bdf8",
+    "Motor": "#a855f7",
+    "Reifen": "#f59e0b",
+    "Hydraulik": "#22c55e",
+    "Bremsen": "#ef4444"
+}
+
+# حدود الصيانة بالساعات
+WARTUNG_GRENZEN = {
+    "Batterie": {"kritisch": 10, "warnung": 30, "max": 100},
+    "Motor": {"kritisch": 20, "warnung": 60, "max": 300},
+    "Reifen": {"kritisch": 15, "warnung": 50, "max": 200},
+    "Hydraulik": {"kritisch": 25, "warnung": 80, "max": 250},
+    "Bremsen": {"kritisch": 10, "warnung": 35, "max": 150}
 }
 
 # =========================================================
-# FertigungsTech GmbH – Virtuelle Fabrik
+# Factory Info – LogisTech GmbH
 # =========================================================
 
 FACTORY_INFO = {
-    "name": "FertigungsTech GmbH",
-    "werk": "Werk 1 – München",
-    "adresse": "Industriestraße 47, 80339 München",
-    "schichten": ["Frühschicht 06:00–14:00", "Spätschicht 14:00–22:00", "Nachtschicht 22:00–06:00"],
-    "gegruendet": "2008",
-    "mitarbeiter": 347,
-    "zertifikate": ["ISO 9001:2015", "DIN EN 13849", "VDI 2853"]
+    "name": "LogisTech GmbH",
+    "werk": "Werk 1 – Hamburg",
+    "adresse": "Hafenstraße 23, 20457 Hamburg",
+    "gegruendet": "2010",
+    "mitarbeiter": 284,
+    "zertifikate": ["ISO 9001:2015", "ISO 45001", "VDI 2198"],
+    "flotte": 24,
+    "schichten": ["Frühschicht 06:00–14:00", "Spätschicht 14:00–22:00", "Nachtschicht 22:00–06:00"]
 }
 
-MACHINE_REGISTRY = {
-    "M01": {"name": "DMG MORI DMU 50",     "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle A", "bediener": "K. Weber",   "sensor_id": "SNS-2024-M01-ACC", "baujahr": 2019},
-    "M02": {"name": "HAAS VF-4",           "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle A", "bediener": "T. Müller",  "sensor_id": "SNS-2024-M02-ACC", "baujahr": 2020},
-    "M03": {"name": "Mazak VARIAXIS i-700","typ": "5-Achs-Bearbeitungszentrum","zelle": "Zelle A","bediener": "F. Schmidt", "sensor_id": "SNS-2024-M03-ACC", "baujahr": 2021},
-    "M04": {"name": "DMG MORI NLX 2500",   "typ": "CNC-Drehmaschine",       "zelle": "Zelle A", "bediener": "R. Bauer",   "sensor_id": "SNS-2024-M04-ACC", "baujahr": 2018},
-    "M05": {"name": "Trumpf TruLaser 3030","typ": "Laserschneidanlage",      "zelle": "Zelle A", "bediener": "M. Klein",   "sensor_id": "SNS-2024-M05-ACC", "baujahr": 2022},
-    "M06": {"name": "HAAS ST-30",          "typ": "CNC-Drehmaschine",       "zelle": "Zelle A", "bediener": "S. Hoffmann","sensor_id": "SNS-2024-M06-ACC", "baujahr": 2020},
-    "M07": {"name": "Hermle C 400",        "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle B", "bediener": "A. Fischer", "sensor_id": "SNS-2024-M07-ACC", "baujahr": 2021},
-    "M08": {"name": "Mazak INTEGREX i-400","typ": "Dreh-Fräszentrum",       "zelle": "Zelle B", "bediener": "P. Wagner",  "sensor_id": "SNS-2024-M08-ACC", "baujahr": 2019},
-    "M09": {"name": "DMG MORI CTX 450",    "typ": "CNC-Drehmaschine",       "zelle": "Zelle B", "bediener": "L. Braun",   "sensor_id": "SNS-2024-M09-ACC", "baujahr": 2020},
-    "M10": {"name": "HAAS VF-6",           "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle B", "bediener": "J. Schulz",  "sensor_id": "SNS-2024-M10-ACC", "baujahr": 2022},
-    "M11": {"name": "Okuma GENOS M460V",   "typ": "Bearbeitungszentrum",    "zelle": "Zelle B", "bediener": "C. Richter", "sensor_id": "SNS-2024-M11-ACC", "baujahr": 2021},
-    "M12": {"name": "Mazak QT-PRIMOS 150", "typ": "CNC-Drehmaschine",       "zelle": "Zelle B", "bediener": "H. Wolf",    "sensor_id": "SNS-2024-M12-ACC", "baujahr": 2018},
-    "M13": {"name": "DMG MORI DMU 65",     "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle C", "bediener": "G. Neumann", "sensor_id": "SNS-2024-M13-ACC", "baujahr": 2022},
-    "M14": {"name": "FANUC Robodrill",     "typ": "Bohrzentrum",            "zelle": "Zelle C", "bediener": "D. Schwarz", "sensor_id": "SNS-2024-M14-ACC", "baujahr": 2020},
-    "M15": {"name": "Heller MCH 250",      "typ": "Horizontal-Bearbeitungszentrum","zelle": "Zelle C","bediener": "E. Zimmermann","sensor_id": "SNS-2024-M15-ACC", "baujahr": 2019},
-    "M16": {"name": "DMG MORI NHX 4000",   "typ": "Horizontal-Fräszentrum", "zelle": "Zelle C", "bediener": "B. Krause",  "sensor_id": "SNS-2024-M16-ACC", "baujahr": 2021},
-    "M17": {"name": "Waldrich Coburg",     "typ": "Schwerzerspanung",       "zelle": "Zelle D", "bediener": "N. Hartmann","sensor_id": "SNS-2024-M17-ACC", "baujahr": 2017},
-    "M18": {"name": "TOS WHQ 13",          "typ": "Waagerecht-Bohrwerk",    "zelle": "Zelle D", "bediener": "O. Lange",   "sensor_id": "SNS-2024-M18-ACC", "baujahr": 2016},
-    "M19": {"name": "Skoda W 200",         "typ": "Schwerzerspanung",       "zelle": "Zelle D", "bediener": "V. Köhler",  "sensor_id": "SNS-2024-M19-ACC", "baujahr": 2018},
-    "M20": {"name": "Forest-Liné Axia",    "typ": "Portalfräsmaschine",     "zelle": "Zelle D", "bediener": "I. Maier",   "sensor_id": "SNS-2024-M20-ACC", "baujahr": 2020},
-    "M21": {"name": "DMG MORI DMU 210P",   "typ": "Portal-Fräszentrum",     "zelle": "Zelle D", "bediener": "U. Fuchs",   "sensor_id": "SNS-2024-M21-ACC", "baujahr": 2021},
-    "M22": {"name": "Starrag STC 1250",    "typ": "5-Achs-Fräszentrum",     "zelle": "Zelle D", "bediener": "Q. Peters",  "sensor_id": "SNS-2024-M22-ACC", "baujahr": 2022},
-    "M23": {"name": "HAAS VF-12",          "typ": "3-Achs-Fräszentrum",     "zelle": "Zelle D", "bediener": "X. Frank",   "sensor_id": "SNS-2024-M23-ACC", "baujahr": 2019},
-    "M24": {"name": "Mazak HCN-6800",      "typ": "Horizontal-Bearbeitungszentrum","zelle": "Zelle D","bediener": "Y. Berg","sensor_id": "SNS-2024-M24-ACC", "baujahr": 2020},
+# =========================================================
+# Gabelstapler Registry
+# =========================================================
+
+GABELSTAPLER_REGISTRY = {
+    "G01": {
+        "name": "Linde E25L",
+        "typ": "Elektro-Gegengewichtsstapler",
+        "bereich": "Halle A – Eingang",
+        "bediener": "K. Weber",
+        "sensor_id": "SNS-2024-G01-VIB",
+        "baujahr": 2020,
+        "tragkraft_kg": 2500,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G02": {
+        "name": "Toyota 8FBE20",
+        "typ": "Elektro-Gegengewichtsstapler",
+        "bereich": "Halle A – Ausgang",
+        "bediener": "T. Müller",
+        "sensor_id": "SNS-2024-G02-VIB",
+        "baujahr": 2019,
+        "tragkraft_kg": 2000,
+        "batterietyp": "Blei-Säure 48V"
+    },
+    "G03": {
+        "name": "Still RX20-20",
+        "typ": "Elektro-Schubmaststapler",
+        "bereich": "Halle B – Lager",
+        "bediener": "F. Schmidt",
+        "sensor_id": "SNS-2024-G03-VIB",
+        "baujahr": 2021,
+        "tragkraft_kg": 2000,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G04": {
+        "name": "Jungheinrich EFG425",
+        "typ": "Elektro-Gegengewichtsstapler",
+        "bereich": "Halle B – Produktion",
+        "bediener": "R. Bauer",
+        "sensor_id": "SNS-2024-G04-VIB",
+        "baujahr": 2018,
+        "tragkraft_kg": 2500,
+        "batterietyp": "Blei-Säure 48V"
+    },
+    "G05": {
+        "name": "Linde H25D",
+        "typ": "Diesel-Gegengewichtsstapler",
+        "bereich": "Außengelände",
+        "bediener": "M. Klein",
+        "sensor_id": "SNS-2024-G05-VIB",
+        "baujahr": 2019,
+        "tragkraft_kg": 2500,
+        "batterietyp": "Diesel"
+    },
+    "G06": {
+        "name": "Crown RC5500",
+        "typ": "Elektro-Schubmaststapler",
+        "bereich": "Halle C – Hochregal",
+        "bediener": "S. Hoffmann",
+        "sensor_id": "SNS-2024-G06-VIB",
+        "baujahr": 2022,
+        "tragkraft_kg": 1800,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G07": {
+        "name": "Hyster H2.0FT",
+        "typ": "Treibgas-Gegengewichtsstapler",
+        "bereich": "Halle A – Versand",
+        "bediener": "A. Fischer",
+        "sensor_id": "SNS-2024-G07-VIB",
+        "baujahr": 2020,
+        "tragkraft_kg": 2000,
+        "batterietyp": "LPG Gas"
+    },
+    "G08": {
+        "name": "Komatsu FB20M",
+        "typ": "Elektro-Gegengewichtsstapler",
+        "bereich": "Halle C – Kommissionierung",
+        "bediener": "P. Wagner",
+        "sensor_id": "SNS-2024-G08-VIB",
+        "baujahr": 2021,
+        "tragkraft_kg": 2000,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G09": {
+        "name": "BT Reflex RRE160",
+        "typ": "Elektro-Schubmaststapler",
+        "bereich": "Halle B – Hochregal",
+        "bediener": "L. Braun",
+        "sensor_id": "SNS-2024-G09-VIB",
+        "baujahr": 2020,
+        "tragkraft_kg": 1600,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G10": {
+        "name": "Manitou MI25G",
+        "typ": "Treibgas-Gelenkmaststapler",
+        "bereich": "Außengelände – Süd",
+        "bediener": "J. Schulz",
+        "sensor_id": "SNS-2024-G10-VIB",
+        "baujahr": 2018,
+        "tragkraft_kg": 2500,
+        "batterietyp": "LPG Gas"
+    },
+    "G11": {
+        "name": "Doosan B20X-7",
+        "typ": "Elektro-Gegengewichtsstapler",
+        "bereich": "Halle D – Eingang",
+        "bediener": "C. Richter",
+        "sensor_id": "SNS-2024-G11-VIB",
+        "baujahr": 2022,
+        "tragkraft_kg": 2000,
+        "batterietyp": "Li-Ion 48V"
+    },
+    "G12": {
+        "name": "Linde T20AP",
+        "typ": "Elektro-Deichselstapler",
+        "bereich": "Halle D – Kommissionierung",
+        "bediener": "H. Wolf",
+        "sensor_id": "SNS-2024-G12-VIB",
+        "baujahr": 2021,
+        "tragkraft_kg": 2000,
+        "batterietyp": "Li-Ion 24V"
+    },
 }
+
+# =========================================================
+# Sensor Reading für Gabelstapler
+# =========================================================
+
+def get_sensor_reading(stapler_id, zustand, betriebsstunden, seed=0):
+    rng = np.random.default_rng(seed)
+
+    base_vib = {"Gut": 0.8, "Warnung": 2.1, "Kritisch": 4.5, "Ausfall": 7.2}
+    base_temp = {"Gut": 45, "Warnung": 62, "Kritisch": 78, "Ausfall": 95}
+    base_batterie = {"Gut": 92, "Warnung": 71, "Kritisch": 45, "Ausfall": 18}
+    base_hydraulik = {"Gut": 180, "Warnung": 145, "Kritisch": 110, "Ausfall": 75}
+    base_strom = {"Gut": 85, "Warnung": 110, "Kritisch": 145, "Ausfall": 180}
+
+    stapler_info = GABELSTAPLER_REGISTRY.get(stapler_id, {})
+
+    return {
+        "sensor_id": stapler_info.get("sensor_id", "SNS-UNKNOWN"),
+        "timestamp": pd.Timestamp.now().strftime("%d.%m.%Y – %H:%M:%S"),
+        "messung_nr": int(rng.integers(4000, 9999)),
+        "vibration_mm_s": round(base_vib[zustand] + rng.normal(0, 0.2), 2),
+        "motor_temp_c": round(base_temp[zustand] + rng.normal(0, 2.5), 1),
+        "batterie_pct": round(base_batterie[zustand] + rng.normal(0, 3), 1),
+        "hydraulikdruck_bar": round(base_hydraulik[zustand] + rng.normal(0, 5), 1),
+        "motorstrom_a": round(base_strom[zustand] + rng.normal(0, 4), 1),
+        "betriebsstunden": betriebsstunden,
+        "ladezyklen": int(rng.integers(50, 800))
+    }
 
 def get_current_shift():
     hour = pd.Timestamp.now().hour
@@ -106,24 +255,6 @@ def get_current_shift():
     else:
         return "Nachtschicht 22:00–06:00"
 
-def get_sensor_reading(machine_id, state, rpm, seed=0):
-    rng = np.random.default_rng(seed)
-    
-    base_temp = {"Healthy": 52, "Warning": 67, "Critical": 81, "Replace": 94}
-    base_vib  = {"Healthy": 0.42, "Warning": 0.78, "Critical": 1.24, "Replace": 1.87}
-    base_amp  = {"Healthy": 10.2, "Warning": 12.8, "Critical": 15.4, "Replace": 18.9}
-    
-    return {
-        "sensor_id": MACHINE_REGISTRY.get(machine_id, {}).get("sensor_id", "SNS-UNKNOWN"),
-        "timestamp": pd.Timestamp.now().strftime("%d.%m.%Y – %H:%M:%S"),
-        "messung_nr": int(rng.integers(4000, 9999)),
-        "temperatur_c": round(base_temp[state] + rng.normal(0, 2.5), 1),
-        "vibration_mm_s": round(base_vib[state] + rng.normal(0, 0.08), 2),
-        "spindelstrom_a": round(base_amp[state] + rng.normal(0, 0.6), 1),
-        "drehzahl_rpm": rpm,
-        "kuehlmittel_temp_c": round(28.5 + rng.normal(0, 1.2), 1),
-        "audio_rms": round(0.03 + SEVERITY[state] * 0.025 + rng.uniform(0, 0.01), 3)
-    }
 # =========================================================
 # Digital Twin Soundtrack - Acoustic Fingerprint
 # =========================================================
@@ -389,427 +520,269 @@ def audio_to_wav_bytes(y, sr=SR):
     sf.write(buffer, y, sr, format="WAV")
     return buffer.getvalue()
 
-
 # =========================================================
-# Synthetic CNC Sound Generation
-# =========================================================
-
-def generate_tool_sound(
-    state,
-    rpm=8000,
-    teeth=4,
-    material_hardness=0.7,
-    machine_size=1.0,
-    factory_noise=0.04,
-    coolant=True,
-    seed=0
-):
-    """
-    Generates synthetic CNC tool sounds.
-    The sound becomes more unstable and noisy as the tool condition worsens.
-    """
-    rng = np.random.default_rng(seed)
-    t = np.linspace(0, DURATION, int(SR * DURATION), endpoint=False)
-
-    y = np.zeros_like(t)
-
-    # Base machine hum
-    y += 0.12 * machine_size * np.sin(2 * np.pi * 90 * t)
-    y += 0.08 * machine_size * np.sin(2 * np.pi * 180 * t)
-    y += 0.05 * machine_size * np.sin(2 * np.pi * 360 * t)
-
-    # Spindle and cutting tones
-    spindle_freq = rpm / 60
-    tooth_pass_freq = spindle_freq * teeth
-
-    y += 0.10 * np.sin(2 * np.pi * tooth_pass_freq * t)
-    y += 0.07 * np.sin(2 * np.pi * (tooth_pass_freq * 2.1) * t)
-    y += 0.04 * np.sin(2 * np.pi * (tooth_pass_freq * 3.2) * t)
-
-    # Material hardness increases high-frequency content
-    y += 0.04 * material_hardness * np.sin(2 * np.pi * (950 + 400 * material_hardness) * t)
-
-    # Coolant pump sound
-    if coolant:
-        y += 0.035 * np.sin(2 * np.pi * 55 * t) * (1 + 0.4 * np.sin(2 * np.pi * 2.0 * t))
-
-    # Factory background
-    y += rng.normal(0, factory_noise, len(t))
-
-    # Wear-specific patterns
-    if state == "Healthy":
-        y += rng.normal(0, 0.010, len(t))
-
-    elif state == "Warning":
-        chatter_freq = 1700 + rng.normal(0, 60)
-        y += 0.08 * np.sin(2 * np.pi * chatter_freq * t)
-        y += 0.05 * np.sin(2 * np.pi * (chatter_freq + 420) * t) * (1 + 0.5 * np.sin(2 * np.pi * 8 * t))
-        y += rng.normal(0, 0.025, len(t))
-
-        for _ in range(4):
-            start = rng.integers(0, len(t) - 250)
-            y[start:start + 250] += np.hanning(250) * rng.normal(0, 0.10, 250)
-
-    elif state == "Critical":
-        chatter_freq = 2400 + rng.normal(0, 120)
-        y += 0.14 * np.sin(2 * np.pi * chatter_freq * t)
-        y += 0.10 * np.sin(2 * np.pi * (chatter_freq + 620) * t)
-        y += 0.08 * np.sin(2 * np.pi * 3100 * t)
-        y += rng.normal(0, 0.055, len(t))
-
-        for _ in range(10):
-            start = rng.integers(0, len(t) - 320)
-            y[start:start + 320] += np.hanning(320) * rng.normal(0, 0.22, 320)
-
-    elif state == "Replace":
-        chatter_freq = 3000 + rng.normal(0, 180)
-        y += 0.20 * np.sin(2 * np.pi * chatter_freq * t)
-        y += 0.15 * np.sin(2 * np.pi * 3800 * t)
-        y += 0.13 * np.sin(2 * np.pi * 4200 * t)
-        y += rng.normal(0, 0.10, len(t))
-
-        for _ in range(22):
-            start = rng.integers(0, len(t) - 280)
-            y[start:start + 280] += np.hanning(280) * rng.normal(0, 0.42, 280)
-
-    # Normalize
-    y = y / (np.max(np.abs(y)) + 1e-9)
-    return y.astype(np.float32)
-
-
-# =========================================================
-# Audio Feature Extraction
+# Gabelstapler Fleet Generation
 # =========================================================
 
-def extract_features(y, sr=SR):
-    """
-    Extract audio features for ML classification.
-    """
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=16)
-    centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-    bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    zcr = librosa.feature.zero_crossing_rate(y)
-    rms = librosa.feature.rms(y=y)
-    flatness = librosa.feature.spectral_flatness(y=y)
-
-    features = []
-
-    features.extend(np.mean(mfcc, axis=1))
-    features.extend(np.std(mfcc, axis=1))
-
-    for f in [centroid, bandwidth, rolloff, zcr, rms, flatness]:
-        features.append(np.mean(f))
-        features.append(np.std(f))
-
-    return np.array(features)
-
-
-# =========================================================
-# Dataset and Model
-# =========================================================
-
-@st.cache_data
-def create_training_dataset(n_per_class=70):
-    X = []
-    y_labels = []
-    seed = 1000
-
-    rng = np.random.default_rng(42)
-
-    for state in CLASS_ORDER:
-        for _ in range(n_per_class):
-            rpm = rng.integers(5000, 14000)
-            teeth = rng.choice([2, 3, 4, 5, 6])
-            hardness = rng.uniform(0.35, 1.0)
-            size = rng.uniform(0.7, 1.4)
-            noise = rng.uniform(0.01, 0.08)
-            coolant = rng.choice([True, False], p=[0.85, 0.15])
-
-            audio = generate_tool_sound(
-                state=state,
-                rpm=rpm,
-                teeth=teeth,
-                material_hardness=hardness,
-                machine_size=size,
-                factory_noise=noise,
-                coolant=coolant,
-                seed=seed
-            )
-
-            feat = extract_features(audio)
-            X.append(feat)
-            y_labels.append(state)
-            seed += 1
-
-    return np.vstack(X), np.array(y_labels)
-
-
-@st.cache_resource
-def train_model():
-    X, y = create_training_dataset()
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.25,
-        random_state=42,
-        stratify=y
-    )
-
-    model = RandomForestClassifier(
-        n_estimators=260,
-        max_depth=12,
-        random_state=42,
-        class_weight="balanced"
-    )
-
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    cm = confusion_matrix(y_test, y_pred, labels=CLASS_ORDER)
-
-    return model, acc, cm
-
-
-# =========================================================
-# Factory Generation
-# =========================================================
-
-def build_factory(n_machines=16, scenario="Normalbetrieb", seed=123):
+def build_gabelstapler_fleet(n_stapler=12, scenario="Normalbetrieb", seed=123):
     rng = np.random.default_rng(seed)
 
-    cells = ["Zelle A - Fräsen", "Zelle B - Bohren", "Zelle C - Präzision", "Zelle D - Schwerzerspanung"]
-    machine_types = ["3-Achs-Fräszentrum", "5-Achs-Fräszentrum", "CNC-Drehmaschine", "Bohrzentrum", "Bearbeitungszentrum"]
-    tools = ["Schaftfräser", "Bohrer", "Reibahle", "Gewindebohrer", "Planfräser", "Sonderwerkzeug"]
-    materials = ["Aluminium", "Stahl", "Edelstahl", "Titan", "Guss"]
-    jobs = ["Gehäuse", "Welle", "Flansch", "Ventilblock", "Trägerplatte", "Motorhalter", "Hydraulikblock"]
+    bereiche = [
+        "Halle A – Eingang", "Halle A – Ausgang",
+        "Halle B – Lager", "Halle B – Produktion",
+        "Halle C – Hochregal", "Halle C – Kommissionierung",
+        "Halle D – Eingang", "Halle D – Kommissionierung",
+        "Außengelände – Nord", "Außengelände – Süd"
+    ]
 
-    if scenario == "Normalbetrieb":
-        probs = [0.45, 0.32, 0.17, 0.06]
-    elif scenario == "Werkzeugkrise in Zelle B":
-        probs = [0.25, 0.30, 0.32, 0.13]
-    elif scenario == "Hohe Variantenvielfalt":
-        probs = [0.35, 0.35, 0.22, 0.08]
-    else:  # Störungsreicher Spätschichtbetrieb
-        probs = [0.22, 0.33, 0.30, 0.15]
+    typen = [
+        "Elektro-Gegengewichtsstapler",
+        "Elektro-Schubmaststapler",
+        "Diesel-Gegengewichtsstapler",
+        "Treibgas-Gelenkmaststapler",
+        "Elektro-Deichselstapler"
+    ]
+
+    probs_map = {
+        "Normalbetrieb": [0.45, 0.30, 0.17, 0.08],
+        "Wartungskrise": [0.20, 0.30, 0.32, 0.18],
+        "Schichtende": [0.30, 0.35, 0.25, 0.10],
+        "Hochbetrieb": [0.35, 0.32, 0.22, 0.11]
+    }
+
+    probs = probs_map.get(scenario, probs_map["Normalbetrieb"])
 
     rows = []
+    stapler_ids = list(GABELSTAPLER_REGISTRY.keys())
 
-    for i in range(n_machines):
-        machine = f"M{i+1:02d}"
-        cell = cells[i % len(cells)]
+    for i in range(min(n_stapler, len(stapler_ids))):
+        g_id = stapler_ids[i]
+        g_info = GABELSTAPLER_REGISTRY[g_id]
 
-        x = 1.5 + (i % 6) * 2.0 + rng.normal(0, 0.12)
-        y = 1.5 + (i // 6) * 2.2 + rng.normal(0, 0.12)
+        x = 1.5 + (i % 4) * 3.0 + rng.normal(0, 0.15)
+        y = 1.5 + (i // 4) * 3.0 + rng.normal(0, 0.15)
 
-        machine_type = rng.choice(machine_types)
-        tool_type = rng.choice(tools)
-        material = rng.choice(materials, p=[0.25, 0.33, 0.22, 0.10, 0.10])
-        job = rng.choice(jobs)
-
-        actual_state = rng.choice(CLASS_ORDER, p=probs)
-
-        rpm = int(rng.integers(4500, 14500))
-        teeth = int(rng.choice([2, 3, 4, 5, 6]))
-        hardness_map = {
-            "Aluminium": 0.35,
-            "Stahl": 0.65,
-            "Edelstahl": 0.78,
-            "Titan": 0.95,
-            "Guss": 0.70
-        }
-
-        downtime_cost = int(rng.integers(80, 240))
-        due_in = int(rng.integers(25, 210))
-        remaining_parts = int(rng.integers(12, 140))
+        zustand = rng.choice(CLASS_ORDER, p=probs)
+        betriebsstunden = int(rng.integers(500, 8000))
 
         rows.append({
-            "Maschine": machine,
-            "Zelle": cell,
+            "Stapler": g_id,
+            "Name": g_info["name"],
+            "Typ": g_info["typ"],
+            "Bereich": g_info["bereich"],
+            "Bediener": g_info["bediener"],
+            "Sensor_ID": g_info["sensor_id"],
+            "Baujahr": g_info["baujahr"],
+            "Tragkraft_kg": g_info["tragkraft_kg"],
+            "Batterietyp": g_info["batterietyp"],
             "X": x,
             "Y": y,
-            "Maschinentyp": machine_type,
-            "Werkzeug_ID": f"T-{rng.integers(100, 999)}",
-            "Werkzeugtyp": tool_type,
-            "Material": material,
-            "Auftrag": f"AUF-{rng.integers(2000, 9999)} / {job}",
-            "Ist_Zustand": actual_state,
-            "RPM": rpm,
-            "Zähne": teeth,
-            "Materialhärte": hardness_map[material],
-            "Maschinengröße": rng.uniform(0.8, 1.35),
-            "Stillstandskosten_EUR_min": downtime_cost,
-            "Fällig_in_min": due_in,
-            "Restteile": remaining_parts
+            "Ist_Zustand": zustand,
+            "Betriebsstunden": betriebsstunden,
+            "Stillstandskosten_EUR_h": int(rng.integers(50, 180)),
+            "Fällig_in_h": int(rng.integers(5, 80)),
+            "Auftrag": f"LOG-{rng.integers(1000, 9999)}"
         })
 
     return pd.DataFrame(rows)
 
 
 # =========================================================
-# RUL, Logistics and Decision Logic
+# RUL Schätzung für Komponenten
 # =========================================================
 
-def estimate_rul(predicted_state, confidence, due_in, seed=1):
+def estimate_komponenten_rul(zustand, betriebsstunden, seed=1):
     rng = np.random.default_rng(seed)
 
-    base = RUL_BASE[predicted_state]
+    komponenten_rul = {}
 
-    # Critical production due date may reduce allowed time window
-    due_factor = 1.0
-    if due_in < 45:
-        due_factor = 0.90
-    elif due_in > 150:
-        due_factor = 1.08
+    for komp in KOMPONENTEN:
+        base = RUL_BASE[zustand]
+        grenzen = WARTUNG_GRENZEN[komp]
 
-    uncertainty = (1 - confidence) * 18
-    noise = rng.normal(0, 4 + uncertainty)
+        faktor = {
+            "Batterie": 0.8,
+            "Motor": 1.2,
+            "Reifen": 1.0,
+            "Hydraulik": 1.3,
+            "Bremsen": 0.9
+        }[komp]
 
-    rul = max(1, base * due_factor + noise)
-    return round(float(rul), 1)
+        noise = rng.normal(0, base * 0.1)
+        rul = max(1, base * faktor + noise)
 
+        if betriebsstunden > 5000:
+            rul *= 0.85
+        elif betriebsstunden > 3000:
+            rul *= 0.95
 
-def calculate_logistics(row, safety_margin, preset_queue, agv_queue, shortage_probability, seed=0):
-    rng = np.random.default_rng(seed)
+        komponenten_rul[komp] = round(float(rul), 1)
 
-    complexity_map = {
-        "Schaftfräser": 2,
-        "Bohrer": 1,
-        "Reibahle": 3,
-        "Gewindebohrer": 2,
-        "Planfräser": 3,
-        "Sonderwerkzeug": 5
-    }
-
-    material_factor_map = {
-        "Aluminium": 0,
-        "Stahl": 2,
-        "Edelstahl": 4,
-        "Titan": 6,
-        "Guss": 2
-    }
-
-    complexity = complexity_map[row["Werkzeugtyp"]]
-    material_factor = material_factor_map[row["Material"]]
-
-    stock_ok = rng.random() > shortage_probability
-
-    warehouse_pick = 2 + complexity + rng.integers(0, 3)
-    presetting = 7 + 3 * complexity + material_factor + preset_queue * 2 + rng.integers(0, 5)
-
-    # Warehouse/presetting station assumed near coordinate (0,0)
-    distance = np.sqrt(row["X"] ** 2 + row["Y"] ** 2)
-    agv_wait = agv_queue * 2 + rng.uniform(0, 3)
-    transport = 3 + distance * 1.15 + rng.uniform(0, 2)
-
-    shortage_delay = 0
-    if not stock_ok:
-        shortage_delay = rng.integers(18, 38)
-
-    total = warehouse_pick + presetting + agv_wait + transport + safety_margin + shortage_delay
-
-    return {
-        "Lager_min": round(float(warehouse_pick), 1),
-        "Voreinstellung_min": round(float(presetting), 1),
-        "AGV_Wartezeit_min": round(float(agv_wait), 1),
-        "Transport_min": round(float(transport), 1),
-        "Sicherheitsmarge_min": round(float(safety_margin), 1),
-        "Bestandsverzug_min": round(float(shortage_delay), 1),
-        "Logistische_Vorlaufzeit_min": round(float(total), 1),
-        "Bestand_OK": bool(stock_ok)
-    }
+    return komponenten_rul
 
 
-def make_decision(rul, lead_time, confidence, predicted_state, stock_ok, auto_threshold, manual_threshold):
-    if not stock_ok and rul <= lead_time:
-        return "BESTANDSRISIKO"
+# =========================================================
+# Wartungsentscheidung
+# =========================================================
 
-    if predicted_state == "Replace" and confidence >= 0.75 and rul <= lead_time:
+def make_wartungs_decision(rul_min, vorlaufzeit, confidence,
+                           zustand, teile_ok,
+                           auto_threshold, manual_threshold):
+
+    if not teile_ok and rul_min <= vorlaufzeit:
+        return "TEILE_FEHLEN"
+
+    if zustand == "Ausfall" and confidence >= 0.75 and rul_min <= vorlaufzeit:
         return "SOFORT_STOPP"
 
-    if rul <= lead_time:
+    if rul_min <= vorlaufzeit:
         if confidence >= auto_threshold:
-            return "AUTO_AUFTRAG"
+            return "WARTUNGSAUFTRAG"
         elif confidence >= manual_threshold:
-            return "BEDIENER_FREIGABE"
+            return "TECHNIKER_FREIGABE"
         else:
             return "UNSICHER_WARNUNG"
 
-    if rul <= lead_time + 12:
+    if rul_min <= vorlaufzeit + 8:
         return "VORWARNUNG"
 
     return "MONITORING"
 
 
-def evaluate_fleet(factory_df, model, global_noise, safety_margin, preset_queue, agv_queue,
-                   shortage_probability, auto_threshold, manual_threshold, seed=999):
-    rows = []
+# =========================================================
+# Wartungsvorlaufzeit Berechnung
+# =========================================================
+
+def calculate_wartung_vorlaufzeit(row, sicherheitsmarge,
+                                   techniker_queue, seed=0):
     rng = np.random.default_rng(seed)
 
-    for idx, row in factory_df.iterrows():
-        audio = generate_tool_sound(
-            state=row["Ist_Zustand"],
-            rpm=row["RPM"],
-            teeth=row["Zähne"],
-            material_hardness=row["Materialhärte"],
-            machine_size=row["Maschinengröße"],
-            factory_noise=global_noise,
-            coolant=True,
-            seed=seed + idx * 13
+    komplexitaet = {
+        "Elektro-Gegengewichtsstapler": 2,
+        "Elektro-Schubmaststapler": 3,
+        "Diesel-Gegengewichtsstapler": 2,
+        "Treibgas-Gelenkmaststapler": 2,
+        "Elektro-Deichselstapler": 1
+    }.get(row["Typ"], 2)
+
+    teile_ok = rng.random() > 0.12
+
+    diagnose = 1.5 + rng.uniform(0, 1.0)
+    teile_holen = 2.0 + komplexitaet + rng.uniform(0, 2.0)
+    techniker_warten = techniker_queue * 1.5 + rng.uniform(0, 2.0)
+    wartung_selbst = 3.0 + komplexitaet * 2 + rng.uniform(0, 3.0)
+    teile_verzoegerung = rng.integers(4, 12) if not teile_ok else 0
+
+    total = (diagnose + teile_holen + techniker_warten +
+             wartung_selbst + sicherheitsmarge + teile_verzoegerung)
+
+    return {
+        "Diagnose_h": round(float(diagnose), 1),
+        "Teile_holen_h": round(float(teile_holen), 1),
+        "Techniker_Warten_h": round(float(techniker_warten), 1),
+        "Wartung_h": round(float(wartung_selbst), 1),
+        "Sicherheitsmarge_h": round(float(sicherheitsmarge), 1),
+        "Teile_Verzoegerung_h": round(float(teile_verzoegerung), 1),
+        "Gesamte_Vorlaufzeit_h": round(float(total), 1),
+        "Teile_OK": bool(teile_ok)
+    }
+
+
+# =========================================================
+# KI Klassifikation (vereinfacht ohne Audio)
+# =========================================================
+
+def classify_stapler_zustand(row, global_noise, seed=0):
+    rng = np.random.default_rng(seed)
+
+    sensor = get_sensor_reading(
+        stapler_id=row["Stapler"],
+        zustand=row["Ist_Zustand"],
+        betriebsstunden=row["Betriebsstunden"],
+        seed=seed
+    )
+
+    vib = sensor["vibration_mm_s"]
+    temp = sensor["motor_temp_c"]
+    batt = sensor["batterie_pct"]
+
+    noise = rng.normal(0, global_noise * 10)
+
+    score = (
+        (vib / 7.2) * 0.35 +
+        (temp / 95) * 0.30 +
+        ((100 - batt) / 100) * 0.35
+    ) + noise * 0.1
+
+    score = np.clip(score, 0, 1)
+
+    if score < 0.25:
+        pred = "Gut"
+        confidence = round(0.85 + rng.uniform(0, 0.12), 3)
+    elif score < 0.50:
+        pred = "Warnung"
+        confidence = round(0.75 + rng.uniform(0, 0.15), 3)
+    elif score < 0.75:
+        pred = "Kritisch"
+        confidence = round(0.70 + rng.uniform(0, 0.18), 3)
+    else:
+        pred = "Ausfall"
+        confidence = round(0.80 + rng.uniform(0, 0.15), 3)
+
+    return pred, min(confidence, 0.99)
+
+
+# =========================================================
+# Fleet Evaluation
+# =========================================================
+
+def evaluate_gabelstapler_fleet(fleet_df, global_noise,
+                                 sicherheitsmarge, techniker_queue,
+                                 auto_threshold, manual_threshold, seed=999):
+    rows = []
+
+    for idx, row in fleet_df.iterrows():
+        pred, confidence = classify_stapler_zustand(
+            row, global_noise, seed=seed + idx * 13
         )
 
-        features = extract_features(audio).reshape(1, -1)
-
-        pred = model.predict(features)[0]
-        probas = model.predict_proba(features)[0]
-        confidence = float(np.max(probas))
-
-        rul = estimate_rul(
-            predicted_state=pred,
-            confidence=confidence,
-            due_in=row["Fällig_in_min"],
-            seed=seed + idx
+        komponenten_rul = estimate_komponenten_rul(
+            pred, row["Betriebsstunden"], seed=seed + idx
         )
 
-        logistics = calculate_logistics(
-            row=row,
-            safety_margin=safety_margin,
-            preset_queue=preset_queue,
-            agv_queue=agv_queue,
-            shortage_probability=shortage_probability,
+        rul_min = min(komponenten_rul.values())
+
+        wartung = calculate_wartung_vorlaufzeit(
+            row, sicherheitsmarge, techniker_queue,
             seed=seed + idx * 7
         )
 
-        lead = logistics["Logistische_Vorlaufzeit_min"]
+        vorlaufzeit = wartung["Gesamte_Vorlaufzeit_h"]
 
-        decision = make_decision(
-            rul=rul,
-            lead_time=lead,
-            confidence=confidence,
-            predicted_state=pred,
-            stock_ok=logistics["Bestand_OK"],
-            auto_threshold=auto_threshold,
-            manual_threshold=manual_threshold
+        decision = make_wartungs_decision(
+            rul_min, vorlaufzeit, confidence,
+            pred, wartung["Teile_OK"],
+            auto_threshold, manual_threshold
         )
 
-        urgency_gap = lead - rul
+        urgency_gap = vorlaufzeit - rul_min
         risk_score = (
-            max(0, urgency_gap) * (row["Stillstandskosten_EUR_min"] / 100)
-            + SEVERITY[pred] * 18
-            + (0 if logistics["Bestand_OK"] else 22)
-            + (10 if row["Fällig_in_min"] < 45 else 0)
+            max(0, urgency_gap) * (row["Stillstandskosten_EUR_h"] / 50)
+            + SEVERITY[pred] * 20
+            + (0 if wartung["Teile_OK"] else 25)
+            + (15 if row["Fällig_in_h"] < 10 else 0)
         )
 
         new_row = row.to_dict()
         new_row.update({
             "KI_Zustand": pred,
             "Confidence": round(confidence, 3),
-            "RUL_min": rul,
+            "RUL_min_h": rul_min,
             "Entscheidung": decision,
             "Risk_Score": round(float(risk_score), 1),
         })
-        new_row.update(logistics)
+        new_row.update(komponenten_rul)
+        new_row.update(wartung)
 
         rows.append(new_row)
 
@@ -817,19 +790,287 @@ def evaluate_fleet(factory_df, model, global_noise, safety_margin, preset_queue,
 
     priority_map = {
         "SOFORT_STOPP": 1,
-        "BESTANDSRISIKO": 2,
-        "AUTO_AUFTRAG": 3,
-        "BEDIENER_FREIGABE": 4,
+        "TEILE_FEHLEN": 2,
+        "WARTUNGSAUFTRAG": 3,
+        "TECHNIKER_FREIGABE": 4,
         "UNSICHER_WARNUNG": 5,
         "VORWARNUNG": 6,
         "MONITORING": 7
     }
 
     df["Priorität_Rang"] = df["Entscheidung"].map(priority_map)
-    df = df.sort_values(["Priorität_Rang", "Risk_Score"], ascending=[True, False]).reset_index(drop=True)
+    return df.sort_values(
+        ["Priorität_Rang", "Risk_Score"],
+        ascending=[True, False]
+    ).reset_index(drop=True)
 
-    return df
 
+# =========================================================
+# Domino Effect für Gabelstapler
+# =========================================================
+
+def calculate_domino_effect(fleet_df, failed_stapler):
+    failed = fleet_df[fleet_df["Stapler"] == failed_stapler].iloc[0]
+    affected = []
+
+    for _, row in fleet_df.iterrows():
+        if row["Stapler"] == failed_stapler:
+            continue
+
+        impact_score = 0
+        reasons = []
+
+        if row["Bereich"] == failed["Bereich"]:
+            impact_score += 40
+            reasons.append("Gleicher Bereich")
+
+        if row["Typ"] == failed["Typ"]:
+            impact_score += 20
+            reasons.append("Gleicher Staplertyp")
+
+        if row["RUL_min_h"] < 10:
+            impact_score += 25
+            reasons.append("Kritische RUL")
+
+        if row["Stillstandskosten_EUR_h"] > 100:
+            impact_score += 15
+            reasons.append("Hohe Stillstandskosten")
+
+        if impact_score > 0:
+            affected.append({
+                "Stapler": row["Stapler"],
+                "Name": row["Name"],
+                "Bereich": row["Bereich"],
+                "KI_Zustand": row["KI_Zustand"],
+                "RUL_min_h": row["RUL_min_h"],
+                "Impact_Score": impact_score,
+                "Gründe": " | ".join(reasons),
+                "Stillstandskosten_EUR_h": row["Stillstandskosten_EUR_h"]
+            })
+
+    return pd.DataFrame(affected).sort_values(
+        "Impact_Score", ascending=False
+    ).reset_index(drop=True)
+
+
+# =========================================================
+# Notifications
+# =========================================================
+
+def show_notifications(fleet_df):
+    sofort = fleet_df[fleet_df["Entscheidung"] == "SOFORT_STOPP"]
+    wartung = fleet_df[fleet_df["Entscheidung"] == "WARTUNGSAUFTRAG"]
+    teile = fleet_df[fleet_df["Entscheidung"] == "TEILE_FEHLEN"]
+
+    for _, row in sofort.iterrows():
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);
+                    border:2px solid #ef4444;border-radius:12px;
+                    padding:14px 18px;margin-bottom:8px;
+                    display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <span style="font-size:20px;">🚨</span>
+                <span style="color:white;font-weight:800;font-size:16px;margin-left:8px;">
+                    SOFORT-STOPP: {row['Stapler']} – {row['Name']}
+                </span>
+            </div>
+            <div style="color:#fca5a5;font-size:13px;">
+                ⏱️ Noch {row['RUL_min_h']} h | {row['Bereich']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    for _, row in teile.iterrows():
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#78350f,#b45309);
+                    border:2px solid #f59e0b;border-radius:12px;
+                    padding:14px 18px;margin-bottom:8px;
+                    display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <span style="font-size:20px;">⚠️</span>
+                <span style="color:white;font-weight:800;font-size:16px;margin-left:8px;">
+                    TEILE FEHLEN: {row['Stapler']} – {row['Name']}
+                </span>
+            </div>
+            <div style="color:#fde68a;font-size:13px;">
+                ⏱️ Noch {row['RUL_min_h']} h
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    for _, row in wartung.iterrows():
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#064e3b,#065f46);
+                    border:2px solid #10b981;border-radius:12px;
+                    padding:14px 18px;margin-bottom:8px;
+                    display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <span style="font-size:20px;">🔧</span>
+                <span style="color:white;font-weight:800;font-size:16px;margin-left:8px;">
+                    WARTUNGSAUFTRAG: {row['Stapler']} – {row['Name']}
+                </span>
+            </div>
+            <div style="color:#6ee7b7;font-size:13px;">
+                ⏱️ Noch {row['RUL_min_h']} h | Vorlaufzeit: {row['Gesamte_Vorlaufzeit_h']} h
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if len(sofort) == 0 and len(wartung) == 0 and len(teile) == 0:
+        st.markdown("""
+        <div style="background:linear-gradient(135deg,#064e3b,#065f46);
+                    border:1px solid #10b981;border-radius:12px;
+                    padding:12px 18px;margin-bottom:8px;">
+            <span style="font-size:16px;">✅</span>
+            <span style="color:#6ee7b7;font-weight:600;margin-left:8px;">
+                Alle Gabelstapler normal – Keine kritischen Alarme
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# =========================================================
+# KPI Simulation
+# =========================================================
+
+def simulate_kpis(n_events=180, seed=42):
+    rng = np.random.default_rng(seed)
+    rows = []
+
+    for method in ["Traditionell", "Predictive Maintenance"]:
+        for _ in range(n_events):
+            wartungszeit = rng.uniform(3, 12)
+            stillstandskosten = rng.uniform(50, 180)
+
+            if method == "Traditionell":
+                erkennungszeit = rng.uniform(0, 2)
+                notfall_prob = 0.68
+                ausfallrisiko = np.clip(rng.normal(0.35, 0.10), 0, 1)
+                nutzung = np.clip(rng.normal(0.65, 0.09), 0, 1)
+            else:
+                erkennungszeit = rng.uniform(8, 40)
+                notfall_prob = 0.15
+                ausfallrisiko = np.clip(rng.normal(0.08, 0.04), 0, 1)
+                nutzung = np.clip(rng.normal(0.88, 0.05), 0, 1)
+
+            stillstand = max(0, wartungszeit - erkennungszeit)
+            notfall = 1 if rng.random() < notfall_prob and stillstand > 0 else 0
+
+            rows.append({
+                "Methode": method,
+                "Stillstand_h": stillstand,
+                "Stillstandskosten_EUR": stillstand * stillstandskosten,
+                "Notfallwartung": notfall,
+                "Rechtzeitig": 1 if stillstand == 0 else 0,
+                "Ausfallrisiko": ausfallrisiko,
+                "Staplernutzung": nutzung
+            })
+
+    df = pd.DataFrame(rows)
+    summary = df.groupby("Methode").agg(
+        Gesamtstillstand_h=("Stillstand_h", "sum"),
+        Stillstandskosten_EUR=("Stillstandskosten_EUR", "sum"),
+        Notfallwartungen=("Notfallwartung", "sum"),
+        Rechtzeitige_Wartung=("Rechtzeitig", "mean"),
+        Ausfallrisiko=("Ausfallrisiko", "mean"),
+        Staplernutzung=("Staplernutzung", "mean")
+    ).reset_index()
+
+    return df, summary
+
+
+# =========================================================
+# Gauge Chart
+# =========================================================
+
+def make_gauge(title, value, min_val, max_val, unit, color):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        title={"text": title, "font": {"color": "white", "size": 14}},
+        number={"suffix": unit, "font": {"color": "white", "size": 20}},
+        gauge={
+            "axis": {"range": [min_val, max_val], "tickcolor": "white"},
+            "bar": {"color": color},
+            "bgcolor": "#1e293b",
+            "bordercolor": "#334155",
+            "steps": [
+                {"range": [min_val, max_val*0.5], "color": "#064e3b"},
+                {"range": [max_val*0.5, max_val*0.75], "color": "#78350f"},
+                {"range": [max_val*0.75, max_val], "color": "#7f1d1d"}
+            ],
+            "threshold": {
+                "line": {"color": "#ef4444", "width": 3},
+                "thickness": 0.75,
+                "value": max_val * 0.75
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor="#111827",
+        font=dict(color="white"),
+        height=200,
+        margin=dict(l=20, r=20, t=40, b=10)
+    )
+    return fig
+
+
+# =========================================================
+# Factory Map für Gabelstapler
+# =========================================================
+
+def factory_map(df):
+    color_values = df["Entscheidung"].map(DECISION_COLORS)
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=df["X"], y=df["Y"],
+        mode="markers+text",
+        text=df["Stapler"],
+        textposition="top center",
+        marker=dict(
+            size=np.clip(df["Risk_Score"] * 1.2 + 18, 18, 60),
+            color=color_values,
+            line=dict(color="white", width=1.5),
+            opacity=0.92
+        ),
+        customdata=np.stack([
+            df["Bereich"], df["KI_Zustand"],
+            df["RUL_min_h"], df["Gesamte_Vorlaufzeit_h"],
+            df["Entscheidung"], df["Name"]
+        ], axis=-1),
+        hovertemplate=(
+            "<b>%{text} – %{customdata[5]}</b><br>"
+            "Bereich: %{customdata[0]}<br>"
+            "KI-Zustand: %{customdata[1]}<br>"
+            "RUL: %{customdata[2]} h<br>"
+            "Vorlaufzeit: %{customdata[3]} h<br>"
+            "Entscheidung: %{customdata[4]}<extra></extra>"
+        )
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[0], y=[0],
+        mode="markers+text",
+        text=["Werkstatt"],
+        textposition="bottom center",
+        marker=dict(size=32, color="#22c55e", symbol="square"),
+        hoverinfo="text"
+    ))
+
+    fig.update_layout(
+        title="Digitale Lagerkarte – LogisTech GmbH Werk 1",
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=520,
+        xaxis=dict(showgrid=True, gridcolor="#334155", zeroline=False, title="Layout X"),
+        yaxis=dict(showgrid=True, gridcolor="#334155", zeroline=False, title="Layout Y"),
+        margin=dict(l=20, r=20, t=55, b=20)
+    )
+
+    return fig
 
 # =========================================================
 # Plotting
@@ -1048,97 +1289,82 @@ def simulate_kpis(n_events=180, seed=42):
     ).reset_index()
 
     return df, summary
-
-
 # =========================================================
 # Header
 # =========================================================
-
 current_shift = get_current_shift()
 now_str = pd.Timestamp.now().strftime("%d.%m.%Y – %H:%M:%S")
 
 st.markdown(f"""
 <div class="hero">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
-            <div style="font-size:13px; color:#93c5fd; font-weight:600; 
-                        letter-spacing:2px; margin-bottom:6px;">
-                ⚙️ INDUSTRIE 4.0 – PREDICTIVE MANUFACTURING
+            <div style="font-size:13px;color:#93c5fd;font-weight:600;
+                        letter-spacing:2px;margin-bottom:6px;">
+                ⚙️ INDUSTRIE 4.0 – PREDICTIVE MAINTENANCE
             </div>
-            <div class="hero-title">
-                🏭 FertigungsTech GmbH – Werk 1
+            <div style="font-size:38px;font-weight:800;color:white;margin-bottom:5px;">
+                🚜 LogisTech GmbH – Werk 1
             </div>
-            <div class="hero-subtitle">
-                Predictive Tool Logistics Control Tower | München
+            <div style="font-size:18px;color:#dbeafe;">
+                Predictive Gabelstapler Maintenance System | Hamburg
             </div>
-            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
-                <span style="background:rgba(34,197,94,0.2); border:1px solid #22c55e; 
-                             padding:4px 12px; border-radius:999px; font-size:12px; color:#22c55e;">
+            <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+                <span style="background:rgba(34,197,94,0.2);border:1px solid #22c55e;
+                             padding:4px 12px;border-radius:999px;font-size:12px;color:#22c55e;">
                     📡 Sensor Network: AKTIV
                 </span>
-                <span style="background:rgba(56,189,248,0.2); border:1px solid #38bdf8; 
-                             padding:4px 12px; border-radius:999px; font-size:12px; color:#38bdf8;">
+                <span style="background:rgba(56,189,248,0.2);border:1px solid #38bdf8;
+                             padding:4px 12px;border-radius:999px;font-size:12px;color:#38bdf8;">
                     🕐 {current_shift}
                 </span>
-                <span style="background:rgba(168,85,247,0.2); border:1px solid #a855f7; 
-                             padding:4px 12px; border-radius:999px; font-size:12px; color:#a855f7;">
+                <span style="background:rgba(168,85,247,0.2);border:1px solid #a855f7;
+                             padding:4px 12px;border-radius:999px;font-size:12px;color:#a855f7;">
                     🔄 Live: {now_str}
                 </span>
-                <span style="background:rgba(245,158,11,0.2); border:1px solid #f59e0b; 
-                             padding:4px 12px; border-radius:999px; font-size:12px; color:#f59e0b;">
+                <span style="background:rgba(245,158,11,0.2);border:1px solid #f59e0b;
+                             padding:4px 12px;border-radius:999px;font-size:12px;color:#f59e0b;">
                     ✅ ISO 9001:2015 Zertifiziert
                 </span>
             </div>
         </div>
-        <div style="text-align:right; color:#94a3b8; font-size:12px; min-width:200px;">
-            <div style="font-size:28px; font-weight:800; color:white;">
-                FTG
-            </div>
-            <div>FertigungsTech GmbH</div>
-            <div>Industriestraße 47</div>
-            <div>80339 München</div>
-            <div style="margin-top:6px; color:#64748b;">
+        <div style="text-align:right;color:#94a3b8;font-size:12px;min-width:200px;">
+            <div style="font-size:28px;font-weight:800;color:white;">LTG</div>
+            <div>LogisTech GmbH</div>
+            <div>Hafenstraße 23</div>
+            <div>20457 Hamburg</div>
+            <div style="margin-top:6px;color:#64748b;">
                 Gegründet {FACTORY_INFO['gegruendet']} | 
-                {FACTORY_INFO['mitarbeiter']} Mitarbeiter
+                {FACTORY_INFO['mitarbeiter']} Mitarbeiter |
+                {FACTORY_INFO['flotte']} Gabelstapler
             </div>
         </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-
 # =========================================================
 # Sidebar Controls
 # =========================================================
-
-st.sidebar.header("⚙️ Prototype-Konfiguration")
-demo_mode = st.sidebar.checkbox("🎓 Professor Demo Scenario", value=False)
-priority_map = {
-    "SOFORT_STOPP": 1,
-    "BESTANDSRISIKO": 2,
-    "AUTO_AUFTRAG": 3,
-    "BEDIENER_FREIGABE": 4,
-    "UNSICHER_WARNUNG": 5,
-    "VORWARNUNG": 6,
-    "MONITORING": 7
-}
+st.sidebar.header("⚙️ Systemkonfiguration")
 
 scenario = st.sidebar.selectbox(
     "Szenario",
     [
         "Normalbetrieb",
-        "Werkzeugkrise in Zelle B",
-        "Hohe Variantenvielfalt",
-        "Störungsreicher Spätschichtbetrieb"
+        "Wartungskrise",
+        "Schichtende",
+        "Hochbetrieb"
     ],
-    index=1
+    index=0
 )
 
-n_machines = st.sidebar.slider("Anzahl CNC-Maschinen", 8, 24, 18, 1)
+n_stapler = st.sidebar.slider(
+    "Anzahl Gabelstapler", 4, 12, 8, 1
+)
 
 global_noise = st.sidebar.slider(
-    "Fabrikgeräusch / Noise Level",
-    0.01, 0.12, 0.055, 0.005
+    "Sensor-Rauschen", 0.01, 0.15, 0.05, 0.005
 )
 
 seed = st.sidebar.number_input(
@@ -1150,18 +1376,34 @@ seed = st.sidebar.number_input(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Logistikparameter")
+st.sidebar.subheader("Wartungsparameter")
 
-preset_queue = st.sidebar.slider("Queue Voreinstellstation", 0, 8, 2)
-agv_queue = st.sidebar.slider("Queue AGV/FTS", 0, 8, 2)
-safety_margin = st.sidebar.slider("Sicherheitsmarge [min]", 0, 20, 6)
-shortage_probability = st.sidebar.slider("Wahrscheinlichkeit Werkzeug nicht auf Lager", 0.0, 0.35, 0.08, 0.01)
+techniker_queue = st.sidebar.slider(
+    "Verfügbare Techniker", 1, 6, 2
+)
+
+sicherheitsmarge = st.sidebar.slider(
+    "Sicherheitsmarge [h]", 0, 10, 3
+)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("KI-Entscheidungsschwellen")
 
-auto_threshold = st.sidebar.slider("Auto-Auftrag ab Confidence", 0.50, 1.00, 0.84, 0.01)
-manual_threshold = st.sidebar.slider("Bedienerfreigabe ab Confidence", 0.30, 0.90, 0.60, 0.01)
+auto_threshold = st.sidebar.slider(
+    "Auto-Wartungsauftrag ab Confidence",
+    0.50, 1.00, 0.82, 0.01
+)
+
+manual_threshold = st.sidebar.slider(
+    "Technikerfreigabe ab Confidence",
+    0.30, 0.90, 0.60, 0.01
+)
+
+st.sidebar.caption(
+    f"🔄 Live Update alle 5s | {time.strftime('%H:%M:%S')} | #{st.session_state.update_counter}"
+)
+
+
 
 # =========================================================
 # Live Notifications System
