@@ -2410,7 +2410,7 @@ with tab6:
     """, unsafe_allow_html=True)
 
     try:
-        GEMINI_API_KEY = st.secrets["AQ.Ab8RN6LuCcnYtOWaDmrUseE13ppnI-Dh8q7FnlJLi9U31jpTqw"]
+        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     except:
         GEMINI_API_KEY = ""
         st.warning("""
@@ -2468,7 +2468,7 @@ Sei präzise, professionell und hilfreich.
                     url = (
                         f"https://generativelanguage.googleapis.com"
                         f"/v1beta/models/gemini-2.5-flash"
-                        f":generateContent?key={AQ.Ab8RN6LuCcnYtOWaDmrUseE13ppnI-Dh8q7FnlJLi9U31jpTqw}"
+                        f":generateContent?key={GEMINI_API_KEY}"
                     )
 
                     payload = {
