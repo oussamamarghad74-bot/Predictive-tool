@@ -472,10 +472,6 @@ if "update_counter" not in st.session_state:
     st.session_state.update_counter = 0
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-if time.time() - st.session_state.last_update > 5:
-    st.session_state.last_update = time.time()
-    st.session_state.update_counter += 1
-    st.rerun()
 
 # =========================================================
 # Custom CSS Design
@@ -1636,10 +1632,11 @@ with tab2:
     st.header("🔍 Stapler-Detail & KI Analyse")
 
     selected_stapler = st.selectbox(
-        "Gabelstapler auswählen",
-        fleet["Stapler"].tolist(),
-        index=0
-    )
+    "Gabelstapler auswählen",
+    fleet["Stapler"].tolist(),
+    index=0,
+    key="stapler_select_t2"
+)
 
     selected = fleet[fleet["Stapler"] == selected_stapler].iloc[0]
     stapler_info = GABELSTAPLER_REGISTRY.get(selected_stapler, {})
@@ -1987,10 +1984,6 @@ with tab2:
         st.subheader("Confusion Matrix – Akustikmodell")
         cm_df = pd.DataFrame(acoustic_cm, index=CLASS_ORDER, columns=CLASS_ORDER)
         st.dataframe(cm_df, use_container_width=True)
-
-# =========================================================
-# Tab 3: Wartung & Planung
-# =========================================================
 
 # =========================================================
 # Tab 3: Wartung & Planung
