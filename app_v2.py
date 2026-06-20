@@ -267,16 +267,14 @@ st.set_page_config(
 )
 import time
 
+if "start_time" not in st.session_state:
+    st.session_state.start_time = time.time()
 if "last_update" not in st.session_state:
     st.session_state.last_update = time.time()
-
 if "update_counter" not in st.session_state:
     st.session_state.update_counter = 0
-
-if time.time() - st.session_state.last_update > 10:
-    st.session_state.last_update = time.time()
-    st.session_state.update_counter += 1
-    st.rerun()
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
     
 rng_live = np.random.default_rng(
     int(time.time() / 10)
