@@ -2468,7 +2468,7 @@ Sei präzise, professionell und hilfreich.
                     url = (
                         f"https://generativelanguage.googleapis.com"
                         f"/v1beta/models/gemini-2.5-flash"
-                        f":generateContent?key={GEMINI_API_KEY}"
+                        f":generateContent?key={AQ.Ab8RN6LuCcnYtOWaDmrUseE13ppnI-Dh8q7FnlJLi9U31jpTqw}"
                     )
 
                     payload = {
