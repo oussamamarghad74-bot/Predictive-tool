@@ -273,6 +273,380 @@ def plot_audio_mel(y, sr=SR):
     ax.set_ylabel("Mel-Bänder", color="white")
     ax.tick_params(colors="white")
     return fig
+    # =========================================================
+# Feature 1: Explainable AI (XAI) – Erklärbare KI-Diagnose
+# =========================================================
+
+FEATURE_NAMES = (
+    [f"MFCC_Mean_{i+1}" for i in range(16)] +
+    [f"MFCC_Std_{i+1}" for i in range(16)] +
+    ["Spectral_Centroid_Mean", "Spectral_Centroid_Std",
+     "Spectral_Bandwidth_Mean", "Spectral_Bandwidth_Std",
+     "Spectral_Rolloff_Mean", "Spectral_Rolloff_Std",
+     "Zero_Crossing_Rate_Mean", "Zero_Crossing_Rate_Std",
+     "RMS_Energy_Mean", "RMS_Energy_Std",
+     "Spectral_Flatness_Mean", "Spectral_Flatness_Std"]
+)
+
+FEATURE_EXPLANATIONS_DE = {
+    "MFCC": "Klangfarbe des Motorgeräuschs (z.B. mechanisches Klappern, Reibung)",
+    "Spectral_Centroid": "Tonhöhen-Schwerpunkt – steigt bei hochfrequentem Verschleißgeräusch",
+    "Spectral_Bandwidth": "Frequenzbreite – steigt bei unregelmäßigen Geräuschmustern",
+    "Spectral_Rolloff": "Frequenzgrenze des Energiegehalts – Hinweis auf Hochfrequenzrauschen",
+    "Zero_Crossing_Rate": "Signalrauheit – hohe Werte deuten auf Klopfen/Rattern hin",
+    "RMS_Energy": "Gesamtlautstärke – steigt deutlich bei kritischem Verschleiß",
+    "Spectral_Flatness": "Rauschanteil – hohe Werte bedeuten chaotisches, unstrukturiertes Geräusch"
+}
+
+
+def get_feature_importance_global(model):
+    """
+    Globale Feature Importance des Random-Forest-Modells:
+    Welche akustischen Merkmale sind insgesamt am wichtigsten
+    für die Zustandserkennung?
+    """
+    importances = model.feature_importances_
+    imp_df = pd.DataFrame({
+        "Feature": FEATURE_NAMES,
+        "Importance": importances
+    }).sort_values("Importance", ascending=False).reset_index(drop=True)
+
+    def map_category(feat):
+        for key in FEATURE_EXPLANATIONS_DE:
+            if feat.startswith(key):
+                return key
+        return feat
+
+    imp_df["Kategorie"] = imp_df["Feature"].apply(map_category)
+    imp_df["Erklärung"] = imp_df["Kategorie"].map(FEATURE_EXPLANATIONS_DE)
+
+    return imp_df
+
+
+def explain_single_prediction(model, features, top_n=5):
+    """
+    Lokale Erklärung EINER Vorhersage:
+    Welche Merkmale dieses spezifischen Audiosignals haben
+    am meisten zur Entscheidung beigetragen?
+
+    Methode: Permutation-basierte lokale Sensitivität –
+    für jedes Feature wird gemessen, wie stark sich die
+    Vorhersage-Wahrscheinlichkeit ändert, wenn dieses Feature
+    auf den Mittelwert des Trainingssatzes zurückgesetzt wird.
+    """
+    baseline_proba = model.predict_proba(features)[0]
+    predicted_class_idx = np.argmax(baseline_proba)
+    baseline_confidence = baseline_proba[predicted_class_idx]
+
+    contributions = []
+    X_train_ref, _ = create_acoustic_training_dataset()
+    global_means = np.mean(X_train_ref, axis=0)
+
+    for i in range(features.shape[1]):
+        modified = features.copy()
+        modified[0, i] = global_means[i]
+        new_proba = model.predict_proba(modified)[0]
+        new_confidence = new_proba[predicted_class_idx]
+
+        impact = baseline_confidence - new_confidence
+        contributions.append({
+            "Feature": FEATURE_NAMES[i],
+            "Impact": impact,
+            "Wert_im_Signal": features[0, i],
+            "Trainings_Mittelwert": global_means[i]
+        })
+
+    contrib_df = pd.DataFrame(contributions)
+    contrib_df["Abs_Impact"] = contrib_df["Impact"].abs()
+    contrib_df = contrib_df.sort_values(
+        "Abs_Impact", ascending=False
+    ).head(top_n).reset_index(drop=True)
+
+    def map_category(feat):
+        for key in FEATURE_EXPLANATIONS_DE:
+            if feat.startswith(key):
+                return key
+        return feat
+
+    contrib_df["Kategorie"] = contrib_df["Feature"].apply(map_category)
+    contrib_df["Erklärung"] = contrib_df["Kategorie"].map(FEATURE_EXPLANATIONS_DE)
+
+    return contrib_df, CLASS_ORDER[predicted_class_idx], baseline_confidence
+
+
+def plot_explanation_chart(contrib_df, predicted_class):
+    colors = ["#ef4444" if x > 0 else "#22c55e" for x in contrib_df["Impact"]]
+
+    fig = go.Figure(go.Bar(
+        x=contrib_df["Impact"],
+        y=contrib_df["Feature"],
+        orientation="h",
+        marker=dict(color=colors),
+        text=[f"{v:+.3f}" for v in contrib_df["Impact"]],
+        textposition="outside"
+    ))
+
+    fig.update_layout(
+        title=f"Warum '{predicted_class}'? – Einfluss der wichtigsten Merkmale",
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=320,
+        xaxis=dict(title="Beitrag zur Konfidenz", gridcolor="#334155"),
+        yaxis=dict(gridcolor="#334155", autorange="reversed")
+    )
+    return fig
+    # =========================================================
+# Feature 2: Unsupervised Anomaly Detection
+# Erkennt UNBEKANNTE Fehlermuster, die das Random-Forest-
+# Modell nicht in seinen 4 Klassen gelernt hat.
+# =========================================================
+
+from sklearn.ensemble import IsolationForest
+
+
+@st.cache_resource
+def train_anomaly_detector():
+    """
+    Trainiert einen Isolation-Forest NUR auf 'Gut'-Zustände.
+    Jedes Signal, das stark vom normalen Betriebsgeräusch
+    abweicht, wird als Anomalie markiert – unabhängig davon,
+    ob es einer der 4 bekannten Klassen entspricht oder
+    einem völlig NEUEN, unbekannten Fehlertyp.
+    """
+    rng = np.random.default_rng(555)
+    X_normal = []
+
+    for _ in range(150):
+        motor_typ = rng.choice(["Elektro", "Diesel", "LPG Gas"])
+        audio = generate_forklift_sound(
+            state="Gut",
+            motor_typ=motor_typ,
+            last_kg=rng.integers(1600, 2500),
+            betriebsstunden=rng.integers(500, 8000),
+            factory_noise=rng.uniform(0.02, 0.08),
+            seed=int(rng.integers(0, 100000))
+        )
+        X_normal.append(extract_audio_features(audio))
+
+    X_normal = np.vstack(X_normal)
+
+    detector = IsolationForest(
+        n_estimators=200,
+        contamination=0.05,
+        random_state=42
+    )
+    detector.fit(X_normal)
+
+    return detector
+
+
+def detect_anomaly(detector, features):
+    """
+    Gibt einen Anomalie-Score zurück:
+    - score < 0  → ungewöhnliches Signal (potenzielle Anomalie)
+    - score > 0  → normales, bekanntes Betriebsgeräusch
+
+    is_anomaly=True bedeutet: Das Geräusch passt zu KEINEM
+    der bekannten 'Gut'-Muster – könnte ein neuer, noch nicht
+    trainierter Fehlertyp sein (z.B. seltener Lagerschaden,
+    Fremdkörper im Hydrauliksystem usw.)
+    """
+    raw_score = detector.decision_function(features)[0]
+    is_anomaly = detector.predict(features)[0] == -1
+
+    normalized_score = float(np.clip((raw_score + 0.3) / 0.6, 0, 1))
+
+    return {
+        "is_anomaly": bool(is_anomaly),
+        "anomaly_score": round(raw_score, 4),
+        "normality_pct": round(normalized_score * 100, 1)
+    }
+
+
+def plot_anomaly_gauge(anomaly_result):
+    color = "#ef4444" if anomaly_result["is_anomaly"] else "#22c55e"
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=anomaly_result["normality_pct"],
+        title={"text": "🧬 Normalitäts-Score (Anomaly Detection)",
+               "font": {"color": "white", "size": 14}},
+        number={"suffix": "%", "font": {"color": "white", "size": 24}},
+        gauge={
+            "axis": {"range": [0, 100], "tickcolor": "white"},
+            "bar": {"color": color},
+            "bgcolor": "#1e293b",
+            "bordercolor": "#334155",
+            "steps": [
+                {"range": [0, 40], "color": "#7f1d1d"},
+                {"range": [40, 70], "color": "#78350f"},
+                {"range": [70, 100], "color": "#064e3b"}
+            ],
+            "threshold": {
+                "line": {"color": "white", "width": 3},
+                "thickness": 0.75,
+                "value": 50
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor="#111827",
+        font=dict(color="white"),
+        height=240,
+        margin=dict(l=20, r=20, t=50, b=10)
+    )
+    return fig
+    # =========================================================
+# Feature 3: Human-in-the-Loop Feedback & Incremental Retraining
+# Der Techniker kann eine KI-Diagnose korrigieren. Die
+# Korrektur wird gespeichert und fließt beim nächsten
+# Retraining in das Modell ein (simuliertes Online-Learning).
+# =========================================================
+
+def init_feedback_store():
+    if "feedback_corrections" not in st.session_state:
+        st.session_state.feedback_corrections = []
+
+
+def add_feedback_correction(audio_features, correct_label, stapler_id, predicted_label):
+    st.session_state.feedback_corrections.append({
+        "features": audio_features.flatten(),
+        "correct_label": correct_label,
+        "predicted_label": predicted_label,
+        "stapler_id": stapler_id,
+        "timestamp": pd.Timestamp.now().strftime("%d.%m.%Y %H:%M:%S")
+    })
+
+
+def retrain_with_feedback(base_model):
+    """
+    Simuliertes Incremental Learning: Das Modell wird mit den
+    ursprünglichen Trainingsdaten PLUS allen Techniker-Korrekturen
+    neu trainiert. Dies demonstriert Human-in-the-loop Learning –
+    die KI verbessert sich durch Experten-Feedback aus der Praxis.
+    """
+    X_base, y_base = create_acoustic_training_dataset()
+
+    if len(st.session_state.feedback_corrections) == 0:
+        return base_model, 0
+
+    X_feedback = np.array([
+        fb["features"] for fb in st.session_state.feedback_corrections
+    ])
+    y_feedback = np.array([
+        fb["correct_label"] for fb in st.session_state.feedback_corrections
+    ])
+
+    # Feedback-Daten werden mehrfach gewichtet, damit Experten-
+    # Korrekturen stärker einfließen als einzelne synthetische Samples
+    weight_factor = 5
+    X_feedback_weighted = np.repeat(X_feedback, weight_factor, axis=0)
+    y_feedback_weighted = np.repeat(y_feedback, weight_factor, axis=0)
+
+    X_combined = np.vstack([X_base, X_feedback_weighted])
+    y_combined = np.concatenate([y_base, y_feedback_weighted])
+
+    new_model = RandomForestClassifier(
+        n_estimators=240,
+        max_depth=12,
+        random_state=42,
+        class_weight="balanced"
+    )
+    new_model.fit(X_combined, y_combined)
+
+    return new_model, len(st.session_state.feedback_corrections)
+
+
+def get_feedback_summary_df():
+    if len(st.session_state.feedback_corrections) == 0:
+        return pd.DataFrame()
+
+    return pd.DataFrame([
+        {
+            "Zeitpunkt": fb["timestamp"],
+            "Stapler": fb["stapler_id"],
+            "KI sagte": fb["predicted_label"],
+            "Techniker korrigierte zu": fb["correct_label"]
+        }
+        for fb in st.session_state.feedback_corrections
+    ])
+    # =========================================================
+# Feature 4: Uncertainty Quantification
+# Misst, wie UNEINIG sich die einzelnen Bäume des Random
+# Forest sind. Hohe Uneinigkeit = die KI ist sich nicht
+# sicher, auch wenn die Top-1-Wahrscheinlichkeit hoch wirkt.
+# =========================================================
+
+def compute_prediction_uncertainty(model, features):
+    """
+    Jeder Baum im Random Forest stimmt einzeln ab. Wenn z.B.
+    bei 240 Bäumen 130 für 'Warnung' und 110 für 'Kritisch'
+    stimmen, ist die Vorhersage statistisch unsicher – auch
+    wenn die finale Wahrscheinlichkeit z.B. 54% beträgt.
+
+    Wir berechnen die Entropie der Stimmenverteilung als
+    Unsicherheitsmaß: 0 = alle Bäume einig, hoch = Bäume
+    uneinig (Modell ist sich nicht sicher).
+    """
+    tree_predictions = np.array([
+        tree.predict(features)[0] for tree in model.estimators_
+    ])
+
+    classes, counts = np.unique(tree_predictions, return_counts=True)
+    vote_distribution = dict(zip(classes, counts))
+
+    total_votes = len(tree_predictions)
+    probs = counts / total_votes
+
+    entropy = -np.sum(probs * np.log2(probs + 1e-12))
+    max_entropy = np.log2(len(CLASS_ORDER))
+    normalized_uncertainty = entropy / max_entropy
+
+    if normalized_uncertainty < 0.25:
+        zone = "✅ Hohe Sicherheit"
+        color = "#22c55e"
+    elif normalized_uncertainty < 0.55:
+        zone = "⚠️ Mittlere Sicherheit"
+        color = "#f59e0b"
+    else:
+        zone = "🚨 Niedrige Sicherheit – Manuelle Prüfung empfohlen"
+        color = "#ef4444"
+
+    vote_df = pd.DataFrame({
+        "Zustand": list(vote_distribution.keys()),
+        "Stimmen": list(vote_distribution.values())
+    })
+    vote_df["Anteil_%"] = round(vote_df["Stimmen"] / total_votes * 100, 1)
+    vote_df = vote_df.sort_values("Stimmen", ascending=False).reset_index(drop=True)
+
+    return {
+        "uncertainty": round(float(normalized_uncertainty), 3),
+        "zone": zone,
+        "color": color,
+        "vote_distribution": vote_df,
+        "total_trees": total_votes
+    }
+
+
+def plot_vote_distribution(vote_df, color):
+    fig = px.bar(
+        vote_df,
+        x="Zustand",
+        y="Stimmen",
+        color="Zustand",
+        color_discrete_map=STATE_COLORS,
+        title="Abstimmung der 240 Entscheidungsbäume (Random Forest)",
+        text="Anteil_%"
+    )
+    fig.update_traces(texttemplate="%{text}%", textposition="outside")
+    fig.update_layout(
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=280,
+        showlegend=False
+    )
+    return fig
 # =========================================================
 # Factory Info – LogisTech GmbH
 # =========================================================
@@ -1308,8 +1682,15 @@ st.sidebar.caption(
 # =========================================================
 # Fleet Evaluation
 # =========================================================
+init_feedback_store()
+
 with st.spinner("🤖 KI trainiert Akustikmodell und analysiert Flotte..."):
     acoustic_model, acoustic_accuracy, acoustic_cm = train_acoustic_model()
+    anomaly_detector = train_anomaly_detector()
+
+    if len(st.session_state.feedback_corrections) > 0:
+        acoustic_model, n_corrections = retrain_with_feedback(acoustic_model)
+
     gabelstapler_df = build_gabelstapler_fleet(
         n_stapler=n_stapler,
         scenario=scenario,
