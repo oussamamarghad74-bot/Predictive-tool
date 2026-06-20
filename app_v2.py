@@ -8,6 +8,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
+import librosa
+import soundfile as sf
+import io
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+SR = 12000
+DURATION = 2.5
 
 # =========================================================
 # Global Settings – Gabelstapler Predictive Maintenance
