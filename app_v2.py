@@ -1485,91 +1485,84 @@ with tab2:
 
     # Stapler Identität
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-                border:1px solid #334155;border-radius:16px;
-                padding:18px;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;
-                    align-items:center;flex-wrap:wrap;gap:12px;">
-            <div>
-                <div style="font-size:11px;color:#64748b;
-                            letter-spacing:2px;margin-bottom:4px;">
-                    STAPLER-IDENTITÄT
-                </div>
-                <div style="font-size:22px;font-weight:800;color:white;">
-                    {selected['Name']}
-                </div>
-                <div style="color:#94a3b8;font-size:13px;">
-                    {selected['Typ']} | 
-                    Baujahr {stapler_info.get('baujahr','')} | 
-                    Tragkraft: {stapler_info.get('tragkraft_kg','')} kg
-                </div>
-                <div style="color:#94a3b8;font-size:13px;margin-top:4px;">
-                    🔋 {stapler_info.get('batterietyp','')} | 
-                    ⏱️ {selected['Betriebsstunden']} Betriebsstunden
-                </div>
+<div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+            border:1px solid #334155;border-radius:16px;
+            padding:18px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;
+                align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+            <div style="font-size:11px;color:#64748b;
+                        letter-spacing:2px;margin-bottom:4px;">
+                STAPLER-IDENTITÄT
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:11px;color:#64748b;margin-bottom:4px;">
-                    SENSOR ID
-                </div>
-                <div style="font-family:monospace;color:#38bdf8;font-size:14px;">
-                    {sensor_data['sensor_id']}
-                </div>
-                <div style="color:#94a3b8;font-size:12px;margin-top:4px;">
-                    Messung #{sensor_data['messung_nr']}
-                </div>
-                <div style="color:#64748b;font-size:11px;">
-                    {sensor_data['timestamp']}
-                </div>
+            <div style="font-size:22px;font-weight:800;color:white;">
+                {selected['Name']}
+            </div>
+            <div style="color:#94a3b8;font-size:13px;">
+                {selected['Typ']} | 
+                Baujahr {stapler_info.get('baujahr','')} | 
+                Tragkraft: {stapler_info.get('tragkraft_kg','')} kg
+            </div>
+            <div style="color:#94a3b8;font-size:13px;margin-top:4px;">
+                🔋 {stapler_info.get('batterietyp','')} | 
+                ⏱️ {selected['Betriebsstunden']} Betriebsstunden
             </div>
         </div>
-
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">📳 Vibration</div>
-                <div style="font-size:20px;font-weight:700;color:#a855f7;">
-                    {sensor_data['vibration_mm_s']} mm/s
-                </div>
+        <div style="text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">
+                SENSOR ID
             </div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">🌡️ Motor Temp</div>
-                <div style="font-size:20px;font-weight:700;color:#f59e0b;">
-                    {sensor_data['motor_temp_c']}°C
-                </div>
+            <div style="font-family:monospace;color:#38bdf8;font-size:14px;">
+                {sensor_data['sensor_id']}
             </div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">🔋 Batterie</div>
-                <div style="font-size:20px;font-weight:700;color:#22c55e;">
-                    {sensor_data['batterie_pct']}%
-                </div>
+            <div style="color:#94a3b8;font-size:12px;margin-top:4px;">
+                Messung #{sensor_data['messung_nr']}
             </div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">⚡ Motorstrom</div>
-                <div style="font-size:20px;font-weight:700;color:#38bdf8;">
-                    {sensor_data['motorstrom_a']} A
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">🔧 Hydraulik</div>
-                <div style="font-size:20px;font-weight:700;color:#06b6d4;">
-                    {sensor_data['hydraulikdruck_bar']} bar
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
-                        padding:10px 16px;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;">🔄 Ladezyklen</div>
-                <div style="font-size:20px;font-weight:700;color:#f472b6;">
-                    {sensor_data['ladezyklen']}
-                </div>
+            <div style="color:#64748b;font-size:11px;">
+                {sensor_data['timestamp']}
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">📳 Vibration</div>
+            <div style="font-size:20px;font-weight:700;color:#a855f7;">
+                {sensor_data['vibration_mm_s']} mm/s
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">🌡️ Motor Temp</div>
+            <div style="font-size:20px;font-weight:700;color:#f59e0b;">
+                {sensor_data['motor_temp_c']}°C
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">🔋 Batterie</div>
+            <div style="font-size:20px;font-weight:700;color:#22c55e;">
+                {sensor_data['batterie_pct']}%
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">⚡ Motorstrom</div>
+            <div style="font-size:20px;font-weight:700;color:#38bdf8;">
+                {sensor_data['motorstrom_a']} A
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">🔧 Hydraulik</div>
+            <div style="font-size:20px;font-weight:700;color:#06b6d4;">
+                {sensor_data['hydraulikdruck_bar']} bar
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 16px;min-width:120px;">
+            <div style="font-size:11px;color:#64748b;">🔄 Ladezyklen</div>
+            <div style="font-size:20px;font-weight:700;color:#f472b6;">
+                {sensor_data['ladezyklen']}
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     # Gauge Charts
     st.subheader("📈 Live Sensor Monitor")
