@@ -1581,165 +1581,154 @@ def show_notifications(fleet_df):
         </div>
         """, unsafe_allow_html=True)
 # =========================================================
-# Model Training and Fleet Evaluation
+# Fleet Evaluation
 # =========================================================
-
-with st.spinner("KI-Modell wird trainiert und Fabrikzustand wird simuliert..."):
-    model, model_accuracy, cm = train_model()
-    factory = build_factory(n_machines=n_machines, scenario=scenario, seed=int(seed))
-    fleet = evaluate_fleet(
-        factory_df=factory,
-        model=model,
+with st.spinner("🤖 KI analysiert Gabelstapler-Flotte..."):
+    gabelstapler_df = build_gabelstapler_fleet(
+        n_stapler=n_stapler,
+        scenario=scenario,
+        seed=int(seed)
+    )
+    fleet = evaluate_gabelstapler_fleet(
+        fleet_df=gabelstapler_df,
         global_noise=global_noise,
-        safety_margin=safety_margin,
-        preset_queue=preset_queue,
-        agv_queue=agv_queue,
-        shortage_probability=shortage_probability,
+        sicherheitsmarge=sicherheitsmarge,
+        techniker_queue=techniker_queue,
         auto_threshold=auto_threshold,
         manual_threshold=manual_threshold,
         seed=int(seed) + 700
     )
-    if demo_mode:
-        fleet.loc[0, "Maschine"] = "M07"
-        fleet.loc[0, "Werkzeug_ID"] = "T-482"
-        fleet.loc[0, "Werkzeugtyp"] = "Sonderwerkzeug"
-        fleet.loc[0, "Material"] = "Titan"
-        fleet.loc[0, "KI_Zustand"] = "Critical"
-        fleet.loc[0, "Confidence"] = 0.91
-        fleet.loc[0, "RUL_min"] = 24.0
-        fleet.loc[0, "Lager_min"] = 5.0
-        fleet.loc[0, "Voreinstellung_min"] = 14.0
-        fleet.loc[0, "AGV_Wartezeit_min"] = 4.0
-        fleet.loc[0, "Transport_min"] = 6.0
-        fleet.loc[0, "Sicherheitsmarge_min"] = 5.0
-        fleet.loc[0, "Bestandsverzug_min"] = 0.0
-        fleet.loc[0, "Logistische_Vorlaufzeit_min"] = 34.0
-        fleet.loc[0, "Bestand_OK"] = True
-        fleet.loc[0, "Entscheidung"] = "AUTO_AUFTRAG"
-        fleet.loc[0, "Risk_Score"] = 88.0
-        fleet = fleet.sort_values(["Priorität_Rang", "Risk_Score"], ascending=[True, False]).reset_index(drop=True)
-rng_live = np.random.default_rng(int(time.time() / 10))
 
-fleet["RUL_min"] = fleet["RUL_min"].apply(
-    lambda x: max(1, x + rng_live.normal(0, 1.5))
+# Live Update
+rng_live = np.random.default_rng(int(time.time() / 5))
+fleet["RUL_min_h"] = fleet["RUL_min_h"].apply(
+    lambda x: max(0.1, x + rng_live.normal(0, 0.5))
 ).round(1)
-
 fleet["Risk_Score"] = fleet["Risk_Score"].apply(
-    lambda x: max(0, x + rng_live.normal(0, 2.0))
+    lambda x: max(0, x + rng_live.normal(0, 1.5))
 ).round(1)
 
 # =========================================================
 # Global KPIs
 # =========================================================
+urgent_count = fleet[fleet["Entscheidung"].isin([
+    "SOFORT_STOPP", "WARTUNGSAUFTRAG", "TEILE_FEHLEN"
+])].shape[0]
 
-urgent_count = fleet[fleet["Entscheidung"].isin(["SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"])].shape[0]
-manual_count = fleet[fleet["Entscheidung"].isin(["BEDIENER_FREIGABE", "UNSICHER_WARNUNG"])].shape[0]
-avg_rul = fleet["RUL_min"].mean()
-avg_lead = fleet["Logistische_Vorlaufzeit_min"].mean()
+manual_count = fleet[fleet["Entscheidung"].isin([
+    "TECHNIKER_FREIGABE", "UNSICHER_WARNUNG"
+])].shape[0]
+
+avg_rul = fleet["RUL_min_h"].mean()
 risk_total = fleet["Risk_Score"].sum()
+
+sofort_count = len(fleet[fleet["Entscheidung"] == "SOFORT_STOPP"])
+gut_count = len(fleet[fleet["KI_Zustand"] == "Gut"])
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    kpi_card("CNC-Maschinen", n_machines, "simulierte Fertigung", "#38bdf8")
+    kpi_card(
+        "Gabelstapler",
+        n_stapler,
+        "überwachte Flotte",
+        "#38bdf8"
+    )
 with col2:
-    kpi_card("Kritische Aufträge", urgent_count, "Auto / Stop / Bestand", "#ef4444")
+    kpi_card(
+        "Kritische Wartungen",
+        urgent_count,
+        "Sofort / Auftrag / Teile",
+        "#ef4444"
+    )
 with col3:
-    kpi_card("Manuelle Freigaben", manual_count, "Bedienerentscheidung", "#f59e0b")
+    kpi_card(
+        "Techniker Freigaben",
+        manual_count,
+        "manuelle Entscheidung",
+        "#f59e0b"
+    )
 with col4:
-    kpi_card("Ø RUL", f"{avg_rul:.1f} min", "Restlebensdauer", "#22c55e")
+    kpi_card(
+        "Ø RUL",
+        f"{avg_rul:.1f} h",
+        "Restbetriebszeit",
+        "#22c55e"
+    )
 with col5:
-    kpi_card("Risiko-Index", f"{risk_total:.0f}", "aggregierter Logistikdruck", "#a855f7")
-
+    kpi_card(
+        "Risiko-Index",
+        f"{risk_total:.0f}",
+        "aggregierter Wartungsdruck",
+        "#a855f7"
+    )
 
 # =========================================================
 # Tabs
 # =========================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🏭 Fertigungs-Leitwarte",
-    "🔍 Maschinen & KI",
-    "🚚 Logistik & Wartung",
+    "🚜 Flotten-Leitwarte",
+    "🔍 Stapler-Detail & KI",
+    "🔧 Wartung & Planung",
     "📊 KPI & Berichte",
     "🧩 Architektur",
     "🤖 KI-Assistent"
 ])
+
 # =========================================================
-# Tab 1: Fertigungs-Leitwarte
+# Tab 1: Flotten-Leitwarte
 # =========================================================
-# =========================================================
-# Tab 1: Fertigungs-Leitwarte
-# =========================================================
-
-def calculate_domino_effect(fleet, machine_id):
-    domino_row = fleet[fleet["Maschine"] == machine_id]
-    if domino_row.empty:
-        return pd.DataFrame()
-
-    zelle = domino_row.iloc[0]["Zelle"]
-
-    affected = fleet[fleet["Maschine"] != machine_id].copy()
-
-    affected["Impact_Score"] = affected.apply(
-        lambda row: row["Stillstandskosten_EUR_min"] * (1.5 if row["Zelle"] == zelle else 0.8),
-        axis=1
-    )
-    affected["Gründe"] = affected.apply(
-        lambda row: "Gleiche Zelle – direkte Abhängigkeit" if row["Zelle"] == zelle else "Indirekte Abhängigkeit",
-        axis=1
-    )
-    affected = affected.sort_values("Impact_Score", ascending=False)
-    return affected
-
-
 with tab1:
-    st.header("🏭 Smart Factory Fertigungs-Leitwarte")
+    st.header("🚜 Smart Logistics Flotten-Leitwarte")
 
-    # ============================
-    # Cost Savings Live Counter
-    # ============================
-    if 'start_time' not in st.session_state:
-        st.session_state.start_time = time.time()
-
+    # Cost Counter
     elapsed_seconds = time.time() - st.session_state.start_time
     elapsed_minutes = elapsed_seconds / 60
-    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
-    savings_per_minute = avg_downtime_cost * 0.38
-    total_savings = elapsed_minutes * savings_per_minute
-    avoided_stops = int(elapsed_minutes / 45)
-    avoided_transports = int(elapsed_minutes / 28)
+    avg_cost = fleet["Stillstandskosten_EUR_h"].mean()
+    total_savings = elapsed_minutes / 60 * avg_cost * 0.42
+    avoided_stops = int(elapsed_minutes / 60 / 3)
+    avoided_notfall = int(elapsed_minutes / 60 / 2)
 
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #064e3b, #065f46);
-                border:1px solid #10b981; border-radius:16px;
-                padding:18px; margin-bottom:16px;">
-        <div style="font-size:13px; color:#6ee7b7;
-                    letter-spacing:2px; margin-bottom:10px;">
+    <div style="background:linear-gradient(135deg,#064e3b,#065f46);
+                border:1px solid #10b981;border-radius:16px;
+                padding:18px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#6ee7b7;
+                    letter-spacing:2px;margin-bottom:10px;">
             💰 LIVE EINSPARUNGSRECHNER – SEIT SYSTEMSTART
         </div>
-        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;">
             <div>
-                <div style="font-size:11px; color:#6ee7b7;">💶 Eingesparte Kosten</div>
-                <div style="font-size:36px; font-weight:800; color:white;">
+                <div style="font-size:11px;color:#6ee7b7;">
+                    💶 Eingesparte Kosten
+                </div>
+                <div style="font-size:36px;font-weight:800;color:white;">
                     {total_savings:.2f} €
                 </div>
-                <div style="font-size:12px; color:#a7f3d0;">
+                <div style="font-size:12px;color:#a7f3d0;">
                     seit {int(elapsed_minutes)} Minuten
                 </div>
             </div>
             <div>
-                <div style="font-size:11px; color:#6ee7b7;">🛑 Vermiedene Stillstände</div>
-                <div style="font-size:36px; font-weight:800; color:white;">
+                <div style="font-size:11px;color:#6ee7b7;">
+                    🛑 Vermiedene Ausfälle
+                </div>
+                <div style="font-size:36px;font-weight:800;color:white;">
                     {avoided_stops}
                 </div>
             </div>
             <div>
-                <div style="font-size:11px; color:#6ee7b7;">🚚 Vermiedene Eiltransporte</div>
-                <div style="font-size:36px; font-weight:800; color:white;">
-                    {avoided_transports}
+                <div style="font-size:11px;color:#6ee7b7;">
+                    🔧 Vermiedene Notfallwartungen
+                </div>
+                <div style="font-size:36px;font-weight:800;color:white;">
+                    {avoided_notfall}
                 </div>
             </div>
             <div>
-                <div style="font-size:11px; color:#6ee7b7;">⏱️ Systemlaufzeit</div>
-                <div style="font-size:36px; font-weight:800; color:white;">
+                <div style="font-size:11px;color:#6ee7b7;">
+                    ⏱️ Systemlaufzeit
+                </div>
+                <div style="font-size:36px;font-weight:800;color:white;">
                     {int(elapsed_minutes)}m {int(elapsed_seconds % 60)}s
                 </div>
             </div>
@@ -1747,82 +1736,74 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    # ============================
     # Notifications
-    # ============================
     st.subheader("🔔 Live Alarm Center")
     show_notifications(fleet)
     st.markdown("---")
 
-    # ============================
     # Live Feed
-    # ============================
     col_live1, col_live2, col_live3, col_live4 = st.columns(4)
-
     with col_live1:
         st.markdown(f"""
-        <div style="background:rgba(34,197,94,0.1); border:1px solid #22c55e;
-                    border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:11px; color:#64748b;">🏭 WERK</div>
-            <div style="font-size:16px; font-weight:700; color:white;">
+        <div style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;
+                    border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">🏭 WERK</div>
+            <div style="font-size:16px;font-weight:700;color:white;">
                 {FACTORY_INFO['werk']}
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     with col_live2:
         st.markdown(f"""
-        <div style="background:rgba(56,189,248,0.1); border:1px solid #38bdf8;
-                    border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:11px; color:#64748b;">🕐 SCHICHT</div>
-            <div style="font-size:16px; font-weight:700; color:white;">
+        <div style="background:rgba(56,189,248,0.1);border:1px solid #38bdf8;
+                    border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">🕐 SCHICHT</div>
+            <div style="font-size:16px;font-weight:700;color:white;">
                 {get_current_shift().split()[0]}
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     with col_live3:
         st.markdown(f"""
-        <div style="background:rgba(168,85,247,0.1); border:1px solid #a855f7;
-                    border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:11px; color:#64748b;">📡 SENSOREN AKTIV</div>
-            <div style="font-size:16px; font-weight:700; color:white;">
+        <div style="background:rgba(168,85,247,0.1);border:1px solid #a855f7;
+                    border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">📡 SENSOREN AKTIV</div>
+            <div style="font-size:16px;font-weight:700;color:white;">
                 {len(fleet)} / {len(fleet)}
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     with col_live4:
         st.markdown(f"""
-        <div style="background:rgba(245,158,11,0.1); border:1px solid #f59e0b;
-                    border-radius:12px; padding:12px; text-align:center;">
-            <div style="font-size:11px; color:#64748b;">📍 STANDORT</div>
-            <div style="font-size:16px; font-weight:700; color:white;">
-                München, DE
+        <div style="background:rgba(245,158,11,0.1);border:1px solid #f59e0b;
+                    border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">📍 STANDORT</div>
+            <div style="font-size:16px;font-weight:700;color:white;">
+                Hamburg, DE
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # ============================
-    # Fabrikkarte
-    # ============================
     st.plotly_chart(factory_map(fleet), use_container_width=True)
 
-    st.subheader("Priorisierte Maschinenliste")
+    st.subheader("Priorisierte Flottenliste")
     display_cols = [
-        "Maschine", "Zelle", "Maschinentyp", "Werkzeug_ID", "Werkzeugtyp",
-        "Material", "KI_Zustand", "Confidence", "RUL_min",
-        "Logistische_Vorlaufzeit_min", "Entscheidung", "Risk_Score"
+        "Stapler", "Name", "Typ", "Bereich",
+        "KI_Zustand", "Confidence", "RUL_min_h",
+        "Gesamte_Vorlaufzeit_h", "Entscheidung", "Risk_Score"
     ]
-    st.dataframe(fleet[display_cols], use_container_width=True, height=420)
+    st.dataframe(
+        fleet[display_cols],
+        use_container_width=True,
+        height=380
+    )
 
     st.subheader("Entscheidungslegende")
     legend_cols = st.columns(4)
     decisions = [
-        "MONITORING", "VORWARNUNG", "AUTO_AUFTRAG", "BEDIENER_FREIGABE",
-        "UNSICHER_WARNUNG", "SOFORT_STOPP", "BESTANDSRISIKO"
+        "MONITORING", "VORWARNUNG", "WARTUNGSAUFTRAG",
+        "TECHNIKER_FREIGABE", "UNSICHER_WARNUNG",
+        "SOFORT_STOPP", "TEILE_FEHLEN"
     ]
     for i, d in enumerate(decisions):
         with legend_cols[i % 4]:
@@ -1830,121 +1811,122 @@ with tab1:
 
     st.markdown("---")
 
-    # ============================
-    # Domino Effekt
-    # ============================
+    # Domino Effect
     st.subheader("🔗 Domino Effekt Analyse")
 
-    domino_machine = st.selectbox(
-        "Simuliere Ausfall von Maschine:",
-        fleet["Maschine"].tolist(),
+    domino_stapler = st.selectbox(
+        "Simuliere Ausfall von Stapler:",
+        fleet["Stapler"].tolist(),
         index=0,
-        key="domino_select_t1"
+        key="domino_t1"
     )
 
-    domino_row = fleet[fleet["Maschine"] == domino_machine].iloc[0]
-    machine_info_d = MACHINE_REGISTRY.get(domino_machine, {})
+    domino_row = fleet[fleet["Stapler"] == domino_stapler].iloc[0]
+    stapler_info_d = GABELSTAPLER_REGISTRY.get(domino_stapler, {})
 
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #7f1d1d, #dc2626);
-                border-radius:16px; padding:18px; margin:12px 0;">
-        <div style="font-size:13px; color:#fca5a5; margin-bottom:4px;">
-            ⚠️ SIMULIERTER MASCHINENAUSFALL
+    <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);
+                border-radius:16px;padding:18px;margin:12px 0;">
+        <div style="font-size:13px;color:#fca5a5;margin-bottom:4px;">
+            ⚠️ SIMULIERTER STAPLERAUSFALL
         </div>
-        <div style="font-size:24px; font-weight:800; color:white;">
-            {domino_machine} – {machine_info_d.get('name', '')}
+        <div style="font-size:24px;font-weight:800;color:white;">
+            {domino_stapler} – {domino_row['Name']}
         </div>
-        <div style="color:#fca5a5; font-size:13px;">
-            {machine_info_d.get('typ', '')} |
-            {domino_row['Zelle']} |
-            Werkzeug: {domino_row['Werkzeug_ID']} |
+        <div style="color:#fca5a5;font-size:13px;">
+            {domino_row['Typ']} | 
+            {domino_row['Bereich']} | 
             Zustand: {domino_row['KI_Zustand']}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    domino_df = calculate_domino_effect(fleet, domino_machine)
+    domino_df = calculate_domino_effect(fleet, domino_stapler)
 
     if domino_df.empty:
-        st.success("✅ Keine anderen Maschinen direkt betroffen.")
+        st.success("✅ Keine anderen Stapler direkt betroffen.")
     else:
-        col_d1, col_d2, col_d3, col_d4 = st.columns(4)
-        total_cost = domino_df["Stillstandskosten_EUR_min"].sum()
-        high_impact = len(domino_df[domino_df["Impact_Score"] >= 50])
-        same_cell_count = len(domino_df[domino_df["Zelle"] == domino_row["Zelle"]])
-
-        with col_d1:
-            kpi_card("Betroffene Maschinen", len(domino_df),
-                     "direkt beeinflusst", "#ef4444")
-        with col_d2:
-            kpi_card("Hohes Risiko", high_impact,
-                     "Impact Score ≥ 50", "#f59e0b")
-        with col_d3:
-            kpi_card("Gleiche Zelle", same_cell_count,
-                     "kritischste Abhängigkeit", "#7c3aed")
-        with col_d4:
-            kpi_card("Kosten-Risiko", f"{total_cost:.0f} €/min",
-                     "bei Kettenreaktion", "#dc2626")
-
-        col_left, col_right = st.columns([1.2, 1])
-
-        with col_left:
-            st.dataframe(
-                domino_df[["Maschine", "Zelle", "KI_Zustand",
-                            "RUL_min", "Impact_Score", "Gründe"]],
-                use_container_width=True,
-                height=300,
-                hide_index=True
+        cd1, cd2, cd3 = st.columns(3)
+        with cd1:
+            kpi_card(
+                "Betroffene Stapler",
+                len(domino_df),
+                "direkt beeinflusst",
+                "#ef4444"
+            )
+        with cd2:
+            kpi_card(
+                "Hohes Risiko",
+                len(domino_df[domino_df["Impact_Score"] >= 50]),
+                "Impact Score ≥ 50",
+                "#f59e0b"
+            )
+        with cd3:
+            kpi_card(
+                "Kosten-Risiko",
+                f"{domino_df['Stillstandskosten_EUR_h'].sum()} €/h",
+                "bei Kettenreaktion",
+                "#dc2626"
             )
 
-        with col_right:
+        col_dl, col_dr = st.columns([1.2, 1])
+        with col_dl:
+            st.dataframe(
+                domino_df[[
+                    "Stapler", "Name", "Bereich",
+                    "KI_Zustand", "RUL_min_h",
+                    "Impact_Score", "Gründe"
+                ]],
+                use_container_width=True,
+                height=280,
+                hide_index=True
+            )
+        with col_dr:
             fig_domino = px.bar(
-                domino_df.head(10),
-                x="Maschine",
+                domino_df.head(8),
+                x="Stapler",
                 y="Impact_Score",
                 color="KI_Zustand",
                 color_discrete_map=STATE_COLORS,
-                title="Domino Impact Score",
+                title="Impact Score",
                 text="Impact_Score"
             )
             fig_domino.update_layout(
                 paper_bgcolor="#111827",
                 plot_bgcolor="#0f172a",
                 font=dict(color="white"),
-                height=300
+                height=280
             )
             st.plotly_chart(fig_domino, use_container_width=True)
-
 # =========================================================
-# Tab 2: Maschinen und KI
+# Tab 2: Stapler Detail & KI
 # =========================================================
-
 with tab2:
-    st.header("🔍 Maschinen & KI Analyse")
+    st.header("🔍 Stapler-Detail & KI Analyse")
 
-    selected_machine = st.selectbox(
-        "Maschine auswählen",
-        fleet["Maschine"].tolist(),
+    selected_stapler = st.selectbox(
+        "Gabelstapler auswählen",
+        fleet["Stapler"].tolist(),
         index=0
     )
 
-    selected = fleet[fleet["Maschine"] == selected_machine].iloc[0]
-    machine_info = MACHINE_REGISTRY.get(selected_machine, {})
+    selected = fleet[fleet["Stapler"] == selected_stapler].iloc[0]
+    stapler_info = GABELSTAPLER_REGISTRY.get(selected_stapler, {})
     sensor_data = get_sensor_reading(
-        machine_id=selected_machine,
-        state=selected["Ist_Zustand"],
-        rpm=selected["RPM"],
-        seed=int(seed) + hash(selected_machine) % 1000
+        stapler_id=selected_stapler,
+        zustand=selected["Ist_Zustand"],
+        betriebsstunden=selected["Betriebsstunden"],
+        seed=int(time.time() / 5)
     )
 
     # KPI Cards
     colA, colB, colC, colD = st.columns(4)
     with colA:
-        kpi_card("Maschine", selected["Maschine"],
-                selected["Maschinentyp"], "#38bdf8")
+        kpi_card("Stapler", selected["Stapler"],
+                selected["Typ"], "#38bdf8")
     with colB:
-        kpi_card("Werkzeug", selected["Werkzeug_ID"],
-                selected["Werkzeugtyp"], "#22c55e")
+        kpi_card("Bereich", selected["Bereich"],
+                f"Bediener: {selected['Bediener']}", "#22c55e")
     with colC:
         kpi_card("KI-Zustand", selected["KI_Zustand"],
                 f"Confidence {selected['Confidence']*100:.1f}%",
@@ -1956,83 +1938,88 @@ with tab2:
 
     st.markdown("---")
 
-    # Maschinen-Identität
+    # Stapler Identität
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-                border:1px solid #334155; border-radius:16px; 
-                padding:18px; margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; 
-                    align-items:center; flex-wrap:wrap; gap:12px;">
+    <div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+                border:1px solid #334155;border-radius:16px;
+                padding:18px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;flex-wrap:wrap;gap:12px;">
             <div>
-                <div style="font-size:11px; color:#64748b; 
-                            letter-spacing:2px; margin-bottom:4px;">
-                    MASCHINEN-IDENTITÄT
+                <div style="font-size:11px;color:#64748b;
+                            letter-spacing:2px;margin-bottom:4px;">
+                    STAPLER-IDENTITÄT
                 </div>
-                <div style="font-size:22px; font-weight:800; color:white;">
-                    {machine_info.get('name', selected_machine)}
+                <div style="font-size:22px;font-weight:800;color:white;">
+                    {selected['Name']}
                 </div>
-                <div style="color:#94a3b8; font-size:13px;">
-                    {machine_info.get('typ', '')} | 
-                    {machine_info.get('zelle', '')} | 
-                    Baujahr {machine_info.get('baujahr', '')}
+                <div style="color:#94a3b8;font-size:13px;">
+                    {selected['Typ']} | 
+                    Baujahr {stapler_info.get('baujahr','')} | 
+                    Tragkraft: {stapler_info.get('tragkraft_kg','')} kg
+                </div>
+                <div style="color:#94a3b8;font-size:13px;margin-top:4px;">
+                    🔋 {stapler_info.get('batterietyp','')} | 
+                    ⏱️ {selected['Betriebsstunden']} Betriebsstunden
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:11px; color:#64748b; margin-bottom:4px;">
+                <div style="font-size:11px;color:#64748b;margin-bottom:4px;">
                     SENSOR ID
                 </div>
-                <div style="font-family:monospace; color:#38bdf8; font-size:14px;">
+                <div style="font-family:monospace;color:#38bdf8;font-size:14px;">
                     {sensor_data['sensor_id']}
                 </div>
-                <div style="color:#94a3b8; font-size:12px; margin-top:4px;">
+                <div style="color:#94a3b8;font-size:12px;margin-top:4px;">
                     Messung #{sensor_data['messung_nr']}
                 </div>
-                <div style="color:#64748b; font-size:11px;">
+                <div style="color:#64748b;font-size:11px;">
                     {sensor_data['timestamp']}
                 </div>
             </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">🌡️ Temperatur</div>
-                <div style="font-size:20px; font-weight:700; color:#f59e0b;">
-                    {sensor_data['temperatur_c']}°C
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">📳 Vibration</div>
-                <div style="font-size:20px; font-weight:700; color:#a855f7;">
+
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">📳 Vibration</div>
+                <div style="font-size:20px;font-weight:700;color:#a855f7;">
                     {sensor_data['vibration_mm_s']} mm/s
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">⚡ Spindelstrom</div>
-                <div style="font-size:20px; font-weight:700; color:#38bdf8;">
-                    {sensor_data['spindelstrom_a']} A
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">🌡️ Motor Temp</div>
+                <div style="font-size:20px;font-weight:700;color:#f59e0b;">
+                    {sensor_data['motor_temp_c']}°C
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">🔊 Audio RMS</div>
-                <div style="font-size:20px; font-weight:700; color:#22c55e;">
-                    {sensor_data['audio_rms']}
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">🔋 Batterie</div>
+                <div style="font-size:20px;font-weight:700;color:#22c55e;">
+                    {sensor_data['batterie_pct']}%
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">❄️ Kühlmittel</div>
-                <div style="font-size:20px; font-weight:700; color:#06b6d4;">
-                    {sensor_data['kuehlmittel_temp_c']}°C
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">⚡ Motorstrom</div>
+                <div style="font-size:20px;font-weight:700;color:#38bdf8;">
+                    {sensor_data['motorstrom_a']} A
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:10px; 
-                        padding:10px 16px; min-width:120px;">
-                <div style="font-size:11px; color:#64748b;">👤 Bediener</div>
-                <div style="font-size:16px; font-weight:700; color:white;">
-                    {machine_info.get('bediener', '-')}
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">🔧 Hydraulik</div>
+                <div style="font-size:20px;font-weight:700;color:#06b6d4;">
+                    {sensor_data['hydraulikdruck_bar']} bar
+                </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:10px 16px;min-width:120px;">
+                <div style="font-size:11px;color:#64748b;">🔄 Ladezyklen</div>
+                <div style="font-size:20px;font-weight:700;color:#f472b6;">
+                    {sensor_data['ladezyklen']}
                 </div>
             </div>
         </div>
@@ -2040,492 +2027,341 @@ with tab2:
     """, unsafe_allow_html=True)
 
     # Gauge Charts
-    st.subheader("📈 Live Gauge Monitor")
-    sensor_live = get_sensor_reading(
-        machine_id=selected_machine,
-        state=selected["Ist_Zustand"],
-        rpm=selected["RPM"],
-        seed=int(time.time() / 5)
-    )
-
+    st.subheader("📈 Live Sensor Monitor")
     g1, g2, g3, g4 = st.columns(4)
-
-    def make_gauge(title, value, min_val, max_val, unit, color):
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=value,
-            title={"text": title, "font": {"color": "white", "size": 14}},
-            number={"suffix": unit, "font": {"color": "white", "size": 20}},
-            gauge={
-                "axis": {"range": [min_val, max_val], "tickcolor": "white"},
-                "bar": {"color": color},
-                "bgcolor": "#1e293b",
-                "bordercolor": "#334155",
-                "steps": [
-                    {"range": [min_val, max_val*0.5], "color": "#064e3b"},
-                    {"range": [max_val*0.5, max_val*0.75], "color": "#78350f"},
-                    {"range": [max_val*0.75, max_val], "color": "#7f1d1d"}
-                ],
-                "threshold": {
-                    "line": {"color": "#ef4444", "width": 3},
-                    "thickness": 0.75,
-                    "value": max_val * 0.75
-                }
-            }
-        ))
-        fig.update_layout(
-            paper_bgcolor="#111827",
-            font=dict(color="white"),
-            height=200,
-            margin=dict(l=20, r=20, t=40, b=10)
-        )
-        return fig
 
     with g1:
         st.plotly_chart(
-            make_gauge("🌡️ Temperatur", sensor_live["temperatur_c"],
-                      0, 120, "°C", "#f59e0b"),
+            make_gauge("📳 Vibration",
+                      sensor_data["vibration_mm_s"],
+                      0, 10, " mm/s", "#a855f7"),
             use_container_width=True
         )
     with g2:
         st.plotly_chart(
-            make_gauge("📳 Vibration", sensor_live["vibration_mm_s"],
-                      0, 3.0, " mm/s", "#a855f7"),
+            make_gauge("🌡️ Motor Temp",
+                      sensor_data["motor_temp_c"],
+                      0, 120, "°C", "#f59e0b"),
             use_container_width=True
         )
     with g3:
         st.plotly_chart(
-            make_gauge("⚡ Spindelstrom", sensor_live["spindelstrom_a"],
-                      0, 25, " A", "#38bdf8"),
+            make_gauge("🔋 Batterie",
+                      sensor_data["batterie_pct"],
+                      0, 100, "%", "#22c55e"),
             use_container_width=True
         )
     with g4:
         st.plotly_chart(
-            make_gauge("⏱️ RUL", selected["RUL_min"],
-                      0, 100, " min", "#22c55e"),
+            make_gauge("⏱️ RUL",
+                      selected["RUL_min_h"],
+                      0, 120, " h", "#38bdf8"),
             use_container_width=True
         )
 
     st.markdown("---")
 
-    # Produktionsauftrag & Logistik
-    left, right = st.columns([1.1, 1])
+    # Komponenten RUL
+    st.subheader("🧬 Komponenten-Gesundheit")
+
+    komp_data = []
+    for komp in KOMPONENTEN:
+        if komp in selected:
+            rul_val = selected[komp]
+            grenzen = WARTUNG_GRENZEN[komp]
+            if rul_val < grenzen["kritisch"]:
+                status = "🚨 Kritisch"
+                color = "#ef4444"
+            elif rul_val < grenzen["warnung"]:
+                status = "⚠️ Warnung"
+                color = "#f59e0b"
+            else:
+                status = "✅ Gut"
+                color = "#22c55e"
+
+            komp_data.append({
+                "Komponente": komp,
+                "RUL [h]": rul_val,
+                "Status": status,
+                "Kritisch unter [h]": grenzen["kritisch"],
+                "Warnung unter [h]": grenzen["warnung"]
+            })
+
+    komp_df = pd.DataFrame(komp_data)
+
+    fig_komp = px.bar(
+        komp_df,
+        x="Komponente",
+        y="RUL [h]",
+        color="Komponente",
+        color_discrete_map=KOMPONENTEN_COLORS,
+        title="Verbleibende Betriebszeit pro Komponente",
+        text="RUL [h]"
+    )
+
+    for komp in KOMPONENTEN:
+        grenzen = WARTUNG_GRENZEN[komp]
+        fig_komp.add_hline(
+            y=grenzen["kritisch"],
+            line_dash="dash",
+            line_color="#ef4444",
+            opacity=0.5
+        )
+
+    fig_komp.update_layout(
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=350
+    )
+    st.plotly_chart(fig_komp, use_container_width=True)
+    st.dataframe(komp_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Wartungsinfo
+    left, right = st.columns([1, 1])
 
     with left:
-        st.subheader("Produktionsauftrag")
-        info_df = pd.DataFrame({
-            "Parameter": ["Zelle", "Auftrag", "Material", "RPM",
-                         "Zähne", "Restteile", "Fällig in", "Stillstandskosten"],
+        st.subheader("📋 Auftragsinformation")
+        st.dataframe(pd.DataFrame({
+            "Parameter": [
+                "Bereich", "Auftrag", "Batterietyp",
+                "Tragkraft", "Betriebsstunden",
+                "Fällig in", "Stillstandskosten"
+            ],
             "Wert": [
-                selected["Zelle"], selected["Auftrag"],
-                selected["Material"], selected["RPM"],
-                selected["Zähne"], selected["Restteile"],
-                f"{selected['Fällig_in_min']} min",
-                f"{selected['Stillstandskosten_EUR_min']} €/min"
+                selected["Bereich"],
+                selected["Auftrag"],
+                stapler_info.get("batterietyp", "-"),
+                f"{stapler_info.get('tragkraft_kg', '-')} kg",
+                f"{selected['Betriebsstunden']} h",
+                f"{selected['Fällig_in_h']} h",
+                f"{selected['Stillstandskosten_EUR_h']} €/h"
             ]
-        })
-        st.dataframe(info_df, use_container_width=True, hide_index=True)
+        }), use_container_width=True, hide_index=True)
 
     with right:
-        st.subheader("Werkzeuglogistische Bewertung")
-        logistics_df = pd.DataFrame({
-            "Kennzahl": ["RUL", "Logistische Vorlaufzeit", "Lagerentnahme",
-                        "Voreinstellung", "AGV-Wartezeit", "Transport",
-                        "Sicherheitsmarge", "Bestandsverzug", "Bestand OK"],
+        st.subheader("🔧 Wartungsplanung")
+        st.dataframe(pd.DataFrame({
+            "Kennzahl": [
+                "RUL (minimum)", "Gesamte Vorlaufzeit",
+                "Diagnose", "Teile holen",
+                "Techniker Warten", "Wartung selbst",
+                "Sicherheitsmarge", "Teile Verzögerung",
+                "Teile OK"
+            ],
             "Wert": [
-                f"{selected['RUL_min']} min",
-                f"{selected['Logistische_Vorlaufzeit_min']} min",
-                f"{selected['Lager_min']} min",
-                f"{selected['Voreinstellung_min']} min",
-                f"{selected['AGV_Wartezeit_min']} min",
-                f"{selected['Transport_min']} min",
-                f"{selected['Sicherheitsmarge_min']} min",
-                f"{selected['Bestandsverzug_min']} min",
-                "Ja" if selected["Bestand_OK"] else "Nein"
+                f"{selected['RUL_min_h']} h",
+                f"{selected['Gesamte_Vorlaufzeit_h']} h",
+                f"{selected['Diagnose_h']} h",
+                f"{selected['Teile_holen_h']} h",
+                f"{selected['Techniker_Warten_h']} h",
+                f"{selected['Wartung_h']} h",
+                f"{selected['Sicherheitsmarge_h']} h",
+                f"{selected['Teile_Verzoegerung_h']} h",
+                "Ja" if selected["Teile_OK"] else "Nein"
             ]
-        })
-        st.dataframe(logistics_df, use_container_width=True, hide_index=True)
+        }), use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
     # Decision Status
     decision = selected["Entscheidung"]
-    if decision == "AUTO_AUFTRAG":
-        st.success("✅ Automatischer Werkzeugbereitstellungsauftrag wurde erzeugt.")
+    if decision == "WARTUNGSAUFTRAG":
+        st.success("✅ Automatischer Wartungsauftrag wurde erzeugt.")
     elif decision == "SOFORT_STOPP":
-        st.error("🚨 Sofortiger Stopp empfohlen!")
-    elif decision == "BEDIENER_FREIGABE":
-        st.warning("⚠️ Bedienerfreigabe erforderlich.")
-    elif decision == "BESTANDSRISIKO":
-        st.error("❌ Bestandsrisiko: Ersatzwerkzeug nicht verfügbar!")
+        st.error("🚨 Sofortiger Stopp! Stapler sofort zur Werkstatt.")
+    elif decision == "TECHNIKER_FREIGABE":
+        st.warning("⚠️ Technikerfreigabe erforderlich.")
+    elif decision == "TEILE_FEHLEN":
+        st.error("❌ Ersatzteile nicht verfügbar! Sonderbeschaffung nötig.")
     elif decision == "VORWARNUNG":
-        st.info("🔔 Vorwarnung: Logistische Vorbereitung empfohlen.")
+        st.info("🔔 Vorwarnung: Wartung bald erforderlich.")
     else:
-        st.info("✅ Monitoring: Werkzeug kann weiterlaufen.")
+        st.info("✅ Monitoring: Stapler läuft normal.")
 
-    st.markdown("---")
-
-    # Audio & KI
-    st.subheader("🎧 Akustische Analyse & KI")
-
-    selected_audio_machine = st.selectbox(
-        "Maschine für Audioanalyse",
-        fleet["Maschine"].tolist(),
-        index=0,
-        key="audio_machine_t2"
-    )
-
-    audio_row = fleet[fleet["Maschine"] == selected_audio_machine].iloc[0]
-    audio = generate_tool_sound(
-        state=audio_row["Ist_Zustand"],
-        rpm=audio_row["RPM"],
-        teeth=audio_row["Zähne"],
-        material_hardness=audio_row["Materialhärte"],
-        machine_size=audio_row["Maschinengröße"],
-        factory_noise=global_noise,
-        coolant=True,
-        seed=int(seed) + int(audio_row.name) * 13 + 1000
-    )
-
-    st.audio(audio_to_wav_bytes(audio), format="audio/wav")
-
-    # Live Signal
-    if st.button("🔄 Signal aktualisieren", key="refresh_t2"):
-        st.rerun()
-
-    live_seed = int(time.time() / 5)
-    rng_signal = np.random.default_rng(live_seed)
-    window_start = int(rng_signal.integers(0, len(audio) - SR))
-    window = audio[window_start:window_start + SR]
-    time_axis = np.linspace(0, 1, len(window))
-
-    fig_live = go.Figure()
-    fig_live.add_trace(go.Scatter(
-        x=time_axis, y=window, mode="lines",
-        line=dict(color=STATE_COLORS[audio_row["KI_Zustand"]], width=1.2)
-    ))
-    fig_live.add_hline(y=0.5, line_dash="dash", line_color="#ef4444",
-                       annotation_text="⚠️ Kritische Schwelle",
-                       annotation_font_color="#ef4444")
-    fig_live.add_hline(y=-0.5, line_dash="dash", line_color="#ef4444")
-    fig_live.update_layout(
-        paper_bgcolor="#111827", plot_bgcolor="#0f172a",
-        font=dict(color="white"), height=200,
-        margin=dict(l=20, r=20, t=30, b=20),
-        title=dict(
-            text=f"🔴 LIVE | {audio_row['Maschine']} | {audio_row['KI_Zustand']}",
-            font=dict(color="white", size=13)
-        )
-    )
-    st.plotly_chart(fig_live, use_container_width=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.pyplot(plot_waveform(audio))
-        st.pyplot(plot_spectrum(audio))
-    with col2:
-        st.pyplot(plot_mel(audio))
-
-        features = extract_features(audio).reshape(1, -1)
-        probas = model.predict_proba(features)[0]
-        proba_df = pd.DataFrame({
-            "Zustand": model.classes_,
-            "Wahrscheinlichkeit": probas
-        })
-        fig_prob = px.bar(
-            proba_df, x="Zustand", y="Wahrscheinlichkeit",
-            color="Zustand", color_discrete_map=STATE_COLORS,
-            title="KI-Wahrscheinlichkeiten", text="Wahrscheinlichkeit"
-        )
-        fig_prob.update_traces(
-            texttemplate="%{text:.2f}", textposition="outside"
-        )
-        fig_prob.update_layout(
-            paper_bgcolor="#111827", plot_bgcolor="#0f172a",
-            font=dict(color="white"), yaxis=dict(range=[0, 1])
-        )
-        st.plotly_chart(fig_prob, use_container_width=True)
-
-    st.markdown("---")
-
-    # KI Kennzahlen
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        kpi_card("Tatsächlicher Zustand", audio_row["Ist_Zustand"],
-                "simuliert", STATE_COLORS[audio_row["Ist_Zustand"]])
-    with c2:
-        kpi_card("KI-Zustand", audio_row["KI_Zustand"],
-                "Vorhersage", STATE_COLORS[audio_row["KI_Zustand"]])
-    with c3:
-        kpi_card("Confidence", f"{audio_row['Confidence']*100:.1f}%",
-                "Modellsicherheit", "#38bdf8")
-    with c4:
-        kpi_card("Test Accuracy", f"{model_accuracy*100:.1f}%",
-                "synthetische Testdaten", "#a855f7")
-
-    st.subheader("Confusion Matrix")
-    cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
-    st.dataframe(cm_df, use_container_width=True)
-
-    st.markdown("---")
-
-    # Digital Twin Soundtrack
-    st.subheader("🎵 Digital Twin Soundtrack – Akustischer Fingerabdruck")
-    st.info("""
-    Jede CNC-Maschine hat eine einzigartige akustische Signatur.
-    Das System vergleicht das aktuelle Signal mit der Baseline.
-    """)
-
-    baseline_audio = generate_tool_sound(
-        state="Healthy", rpm=audio_row["RPM"],
-        teeth=audio_row["Zähne"],
-        material_hardness=audio_row["Materialhärte"],
-        machine_size=audio_row["Maschinengröße"],
-        factory_noise=0.02, coolant=True,
-        seed=int(seed) + 9999
-    )
-
-    baseline_features = learn_acoustic_fingerprint(
-        audio_row["Maschine"], baseline_audio
-    )
-    current_features = extract_features(audio)
-    deviation_pct, deviation_status = compare_to_fingerprint(
-        audio_row["Maschine"], current_features
-    )
-
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        kpi_card("Akustische Abweichung", f"{deviation_pct}%",
-                deviation_status,
-                "#ef4444" if deviation_pct > 35 else "#22c55e")
-    with col_f2:
-        kpi_card("Baseline Status", "✅ Gelernt",
-                f"Maschine {audio_row['Maschine']}", "#38bdf8")
-    with col_f3:
-        kpi_card("Fingerabdruck", "Aktiv",
-                f"seit {pd.Timestamp.now().strftime('%H:%M')}", "#a855f7")
 # =========================================================
-# Tab 3: Logistik und Wartung
+# Tab 3: Wartung & Planung
 # =========================================================
 with tab3:
-    st.header("🚚 Logistik & Wartung")
+    st.header("🔧 Wartung & Planung")
 
-    # ============================
-    # Logistik-Leitstand
-    # ============================
-    st.subheader("🚚 Logistik-Leitstand")
-
+    # Order Board
     order_filter = fleet[fleet["Entscheidung"].isin([
-        "SOFORT_STOPP", "BESTANDSRISIKO", "AUTO_AUFTRAG",
-        "BEDIENER_FREIGABE", "UNSICHER_WARNUNG", "VORWARNUNG"
+        "SOFORT_STOPP", "TEILE_FEHLEN", "WARTUNGSAUFTRAG",
+        "TECHNIKER_FREIGABE", "UNSICHER_WARNUNG", "VORWARNUNG"
     ])].copy()
 
     if order_filter.empty:
-        st.info("Aktuell keine Werkzeugbereitstellungsaufträge notwendig.")
+        st.info("Aktuell keine Wartungsaufträge notwendig.")
     else:
-        st.subheader("Order Board")
+        st.subheader("📋 Wartungs-Order Board")
         st.dataframe(
             order_filter[[
-                "Maschine", "Zelle", "Werkzeug_ID", "Werkzeugtyp",
-                "KI_Zustand", "RUL_min", "Logistische_Vorlaufzeit_min",
-                "Entscheidung", "Bestand_OK", "Risk_Score"
+                "Stapler", "Name", "Bereich", "KI_Zustand",
+                "RUL_min_h", "Gesamte_Vorlaufzeit_h",
+                "Entscheidung", "Teile_OK", "Risk_Score"
             ]],
-            use_container_width=True, height=300
+            use_container_width=True,
+            height=300
         )
 
     st.markdown("---")
 
-    colL, colR = st.columns([1, 1])
+    colL, colR = st.columns(2)
 
     with colL:
-        st.subheader("🤖 AGV / FTS Status")
-        critical_orders = order_filter.head(4)
-        agv_rows = []
-        for i in range(1, 5):
-            if i <= len(critical_orders):
-                r = critical_orders.iloc[i-1]
-                status = f"Transport für {r['Maschine']}"
-                target = r["Zelle"]
-                load = r["Werkzeug_ID"]
+        st.subheader("👨‍🔧 Techniker Status")
+        tech_rows = []
+        for i in range(1, techniker_queue + 2):
+            if i <= len(order_filter):
+                r = order_filter.iloc[i-1]
+                tech_rows.append({
+                    "Techniker": f"Tech-{i:02d}",
+                    "Status": f"Wartung {r['Stapler']}",
+                    "Bereich": r["Bereich"],
+                    "Restzeit": f"{r['Wartung_h']} h"
+                })
             else:
-                status = "Bereit"
-                target = "-"
-                load = "-"
-            agv_rows.append({
-                "AGV": f"FTS-{i:02d}",
-                "Status": status,
-                "Ziel": target,
-                "Ladung": load
-            })
+                tech_rows.append({
+                    "Techniker": f"Tech-{i:02d}",
+                    "Status": "Verfügbar",
+                    "Bereich": "-",
+                    "Restzeit": "-"
+                })
         st.dataframe(
-            pd.DataFrame(agv_rows),
+            pd.DataFrame(tech_rows),
             use_container_width=True,
             hide_index=True
         )
 
     with colR:
-        st.subheader("🔧 Voreinstellstationen")
-        preset_rows = []
-        for i in range(1, 4):
-            if i <= len(order_filter):
-                r = order_filter.iloc[i-1]
-                status = f"Voreinstellung {r['Werkzeug_ID']}"
-                machine = r["Maschine"]
-                remaining = f"{r['Voreinstellung_min']} min"
-            else:
-                status = "Frei"
-                machine = "-"
-                remaining = "-"
-            preset_rows.append({
-                "Station": f"Preset-{i}",
-                "Status": status,
-                "Für Maschine": machine,
-                "Restzeit": remaining
+        st.subheader("🏪 Ersatzteillager Status")
+        teile_rows = []
+        komponenten_liste = [
+            ("Batterie 48V Li-Ion", "BT-48V-LI", 3),
+            ("Motor Antriebseinheit", "MOT-AE-24", 2),
+            ("Vollgummi-Reifen Vorne", "RE-VG-F", 8),
+            ("Hydraulikpumpe", "HY-PMP-01", 1),
+            ("Bremsenkit komplett", "BR-KIT-01", 4),
+        ]
+        for name, art_nr, bestand in komponenten_liste:
+            status = "✅ OK" if bestand > 2 else ("⚠️ Niedrig" if bestand > 0 else "🚨 Leer")
+            teile_rows.append({
+                "Ersatzteil": name,
+                "Art-Nr": art_nr,
+                "Bestand": bestand,
+                "Status": status
             })
         st.dataframe(
-            pd.DataFrame(preset_rows),
+            pd.DataFrame(teile_rows),
             use_container_width=True,
             hide_index=True
         )
 
-    if not order_filter.empty:
-        st.markdown("---")
-        timeline_machine = st.selectbox(
-            "Timeline für Auftrag anzeigen",
-            order_filter["Maschine"].tolist(),
-            key="timeline_t3"
-        )
-        timeline_row = order_filter[
-            order_filter["Maschine"] == timeline_machine
-        ].iloc[0]
-        st.plotly_chart(
-            create_timeline(timeline_row),
-            use_container_width=True
-        )
-
-        actions = pd.DataFrame({
-            "Aktion": [
-                "Werkzeugzustand erkannt",
-                "Ersatzwerkzeug prüfen",
-                "Werkzeug reservieren",
-                "Voreinstellauftrag erzeugen",
-                "Transportauftrag an FTS senden",
-                "Werkzeug an Maschine liefern",
-                "Wechselzeitpunkt vorschlagen"
-            ],
-            "System": [
-                "KI-Modul", "Werkzeuglager",
-                "WMS / Tool Management", "Voreinstellstation",
-                "FTS-Leitsystem", "AGV / Mitarbeiter",
-                "MES / Bedienerinterface"
-            ],
-            "Status": [
-                "Abgeschlossen",
-                "Abgeschlossen" if timeline_row["Bestand_OK"] else "Problem",
-                "Gestartet", "Geplant", "Geplant",
-                "In Vorbereitung", "Offen"
-            ]
-        })
-        st.dataframe(actions, use_container_width=True, hide_index=True)
-
     st.markdown("---")
 
-    # ============================
     # Wartungskalender
-    # ============================
     st.subheader("📅 Predictiver Wartungskalender")
 
-    now = pd.Timestamp.now()
+    now_cal = pd.Timestamp.now()
     calendar_data = []
 
     for _, row in fleet.iterrows():
-        machine_info = MACHINE_REGISTRY.get(row["Maschine"], {})
-        maintenance_time = now + pd.Timedelta(minutes=float(row["RUL_min"]))
+        s_info = GABELSTAPLER_REGISTRY.get(row["Stapler"], {})
+        wartung_time = now_cal + pd.Timedelta(hours=float(row["RUL_min_h"]))
 
-        if row["RUL_min"] < 30:
-            priority = "🚨 Kritisch"
-            color = "#ef4444"
-        elif row["RUL_min"] < 60:
-            priority = "⚠️ Dringend"
-            color = "#f59e0b"
-        elif row["RUL_min"] < 90:
-            priority = "🔔 Bald"
-            color = "#6366f1"
+        if row["RUL_min_h"] < 10:
+            priority, color = "🚨 Kritisch", "#ef4444"
+        elif row["RUL_min_h"] < 24:
+            priority, color = "⚠️ Dringend", "#f59e0b"
+        elif row["RUL_min_h"] < 48:
+            priority, color = "🔔 Bald", "#6366f1"
         else:
-            priority = "✅ Normal"
-            color = "#22c55e"
+            priority, color = "✅ Normal", "#22c55e"
 
         calendar_data.append({
-            "Maschine": row["Maschine"],
-            "Name": machine_info.get("name", ""),
-            "Zelle": row["Zelle"],
-            "Werkzeug": row["Werkzeug_ID"],
-            "RUL_min": row["RUL_min"],
-            "Wartung_um": maintenance_time.strftime("%d.%m.%Y %H:%M"),
+            "Stapler": row["Stapler"],
+            "Name": row["Name"],
+            "Bereich": row["Bereich"],
+            "RUL_h": row["RUL_min_h"],
+            "Wartung_um": wartung_time.strftime("%d.%m.%Y %H:%M"),
             "Priorität": priority,
             "Farbe": color,
-            "Bediener": machine_info.get("bediener", "-")
+            "Bediener": s_info.get("bediener", "-")
         })
 
     cal_df = pd.DataFrame(calendar_data).sort_values(
-        "RUL_min", ascending=True
+        "RUL_h", ascending=True
     ).reset_index(drop=True)
 
-    col_k1, col_k2, col_k3, col_k4 = st.columns(4)
-    with col_k1:
+    ck1, ck2, ck3, ck4 = st.columns(4)
+    with ck1:
         kpi_card("🚨 Kritisch",
-                len(cal_df[cal_df["RUL_min"] < 30]),
-                "< 30 min", "#ef4444")
-    with col_k2:
+                len(cal_df[cal_df["RUL_h"] < 10]),
+                "< 10 Stunden", "#ef4444")
+    with ck2:
         kpi_card("⚠️ Dringend",
-                len(cal_df[(cal_df["RUL_min"] >= 30) &
-                           (cal_df["RUL_min"] < 60)]),
-                "30-60 min", "#f59e0b")
-    with col_k3:
+                len(cal_df[(cal_df["RUL_h"] >= 10) &
+                           (cal_df["RUL_h"] < 24)]),
+                "10-24 Stunden", "#f59e0b")
+    with ck3:
         kpi_card("🔔 Bald",
-                len(cal_df[(cal_df["RUL_min"] >= 60) &
-                           (cal_df["RUL_min"] < 90)]),
-                "60-90 min", "#6366f1")
-    with col_k4:
+                len(cal_df[(cal_df["RUL_h"] >= 24) &
+                           (cal_df["RUL_h"] < 48)]),
+                "24-48 Stunden", "#6366f1")
+    with ck4:
         kpi_card("✅ Normal",
-                len(cal_df[cal_df["RUL_min"] >= 90]),
-                "> 90 min", "#22c55e")
+                len(cal_df[cal_df["RUL_h"] >= 48]),
+                "> 48 Stunden", "#22c55e")
 
     fig_cal = go.Figure()
-    for i, row in cal_df.iterrows():
+    for _, row in cal_df.iterrows():
         fig_cal.add_trace(go.Bar(
-            x=[row["RUL_min"]],
-            y=[f"{row['Maschine']} – {row['Name']}"],
+            x=[row["RUL_h"]],
+            y=[f"{row['Stapler']} – {row['Name']}"],
             orientation="h",
             marker=dict(color=row["Farbe"]),
-            text=f"{row['RUL_min']} min | {row['Wartung_um']}",
+            text=f"{row['RUL_h']} h | {row['Wartung_um']}",
             textposition="inside",
             showlegend=False
         ))
 
-    fig_cal.add_vline(x=30, line_dash="dash", line_color="#ef4444",
-                      annotation_text="🚨 Kritisch",
-                      annotation_font_color="#ef4444")
-    fig_cal.add_vline(x=60, line_dash="dash", line_color="#f59e0b",
-                      annotation_text="⚠️ Dringend",
-                      annotation_font_color="#f59e0b")
+    fig_cal.add_vline(
+        x=10, line_dash="dash", line_color="#ef4444",
+        annotation_text="🚨 Kritisch",
+        annotation_font_color="#ef4444"
+    )
+    fig_cal.add_vline(
+        x=24, line_dash="dash", line_color="#f59e0b",
+        annotation_text="⚠️ Dringend",
+        annotation_font_color="#f59e0b"
+    )
 
     fig_cal.update_layout(
-        paper_bgcolor="#111827", plot_bgcolor="#0f172a",
-        font=dict(color="white"), height=500,
-        xaxis=dict(title="Verbleibende Zeit [min]",
-                  gridcolor="#334155", color="white"),
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=450,
+        xaxis=dict(
+            title="Verbleibende Zeit [h]",
+            gridcolor="#334155",
+            color="white"
+        ),
         yaxis=dict(gridcolor="#334155", color="white"),
         title=dict(
-            text="Wartungsplan – Alle Maschinen nach RUL sortiert",
+            text="Wartungsplan – Alle Stapler nach RUL sortiert",
             font=dict(color="white")
         )
     )
     st.plotly_chart(fig_cal, use_container_width=True)
 
     st.dataframe(
-        cal_df[["Priorität", "Maschine", "Name", "Zelle",
-                "Werkzeug", "RUL_min", "Wartung_um", "Bediener"]],
+        cal_df[[
+            "Priorität", "Stapler", "Name", "Bereich",
+            "RUL_h", "Wartung_um", "Bediener"
+        ]],
         use_container_width=True,
         hide_index=True
     )
@@ -2540,162 +2376,137 @@ with tab3:
 
     st.markdown("---")
 
-    # ============================
-    # Gabelstapler Wartung
-    # ============================
-    st.subheader("🚜 Gabelstapler Predictive Maintenance")
+    # Energy Optimizer
+    st.subheader("⚡ Energy Optimizer – Batterieladung")
 
     st.markdown("""
-    <div style="background:linear-gradient(135deg, #1e3a8a, #1e293b);
-                border:1px solid #3b82f6; border-radius:12px; padding:14px;
-                margin-bottom:16px;">
-        <div style="color:#93c5fd; font-size:13px;">
-            🚜 Das System überwacht auch die Gabelstapler im Werk und 
-            sagt voraus, wann Batterie, Reifen oder Motor gewartet werden müssen.
+    <div style="background:linear-gradient(135deg,#1e3a8a,#1e293b);
+                border:1px solid #3b82f6;border-radius:12px;
+                padding:14px;margin-bottom:16px;">
+        <div style="color:#93c5fd;font-size:13px;">
+            ⚡ Das System berechnet den optimalen Ladezeitpunkt für jeden
+            Elektrostapler basierend auf Schichtplan, Batteriestatus und
+            geplantem Einsatz – um Produktionsunterbrechungen zu vermeiden.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # بيانات الرافعات الشوكية
-    GABELSTAPLER = {
-        "G01": {"name": "Linde E25", "typ": "Elektro",
-                "bediener": "K. Weber", "baujahr": 2020},
-        "G02": {"name": "Toyota 8FBE20", "typ": "Elektro",
-                "bediener": "T. Müller", "baujahr": 2019},
-        "G03": {"name": "Still RX20-20", "typ": "Elektro",
-                "bediener": "F. Schmidt", "baujahr": 2021},
-        "G04": {"name": "Jungheinrich EFG425", "typ": "Elektro",
-                "bediener": "R. Bauer", "baujahr": 2018},
-        "G05": {"name": "Linde H25D", "typ": "Diesel",
-                "bediener": "M. Klein", "baujahr": 2019},
-    }
+    elektro_fleet = fleet[
+        fleet["Batterietyp"].str.contains("Li-Ion|Blei", na=False)
+    ] if "Batterietyp" in fleet.columns else fleet
 
-    rng_g = np.random.default_rng(int(seed) + 500)
+    energy_data = []
+    rng_e = np.random.default_rng(int(seed) + 300)
 
-    gabel_data = []
-    for g_id, g_info in GABELSTAPLER.items():
-        batterie_rul = round(float(rng_g.uniform(10, 95)), 1)
-        reifen_rul = round(float(rng_g.uniform(20, 200)), 1)
-        motor_rul = round(float(rng_g.uniform(50, 300)), 1)
-        oel_rul = round(float(rng_g.uniform(30, 150)), 1)
+    for _, row in fleet.iterrows():
+        s_info = GABELSTAPLER_REGISTRY.get(row["Stapler"], {})
+        bat_typ = s_info.get("batterietyp", "")
 
-        if batterie_rul < 20:
-            status = "🚨 Kritisch"
-            color = "#ef4444"
-        elif batterie_rul < 40:
-            status = "⚠️ Dringend"
-            color = "#f59e0b"
-        else:
-            status = "✅ Normal"
-            color = "#22c55e"
+        if "Li-Ion" in bat_typ or "Blei" in bat_typ:
+            batt_pct = get_sensor_reading(
+                row["Stapler"],
+                row["Ist_Zustand"],
+                row["Betriebsstunden"],
+                seed=int(seed) + hash(row["Stapler"]) % 100
+            )["batterie_pct"]
 
-        gabel_data.append({
-            "Stapler": g_id,
-            "Name": g_info["name"],
-            "Typ": g_info["typ"],
-            "Bediener": g_info["bediener"],
-            "🔋 Batterie RUL [h]": batterie_rul,
-            "🛞 Reifen RUL [h]": reifen_rul,
-            "⚙️ Motor RUL [h]": motor_rul,
-            "🛢️ Öl RUL [h]": oel_rul,
-            "Status": status,
-            "Farbe": color
-        })
+            restzeit_h = round(batt_pct / 100 * rng_e.uniform(6, 10), 1)
+            lade_empfehlung = "Jetzt laden" if batt_pct < 30 else (
+                "Bald laden" if batt_pct < 50 else "OK"
+            )
+            lade_color = "#ef4444" if batt_pct < 30 else (
+                "#f59e0b" if batt_pct < 50 else "#22c55e"
+            )
 
-    gabel_df = pd.DataFrame(gabel_data)
+            energy_data.append({
+                "Stapler": row["Stapler"],
+                "Name": row["Name"],
+                "Batterietyp": bat_typ,
+                "🔋 Ladung %": round(batt_pct, 1),
+                "⏱️ Restzeit [h]": restzeit_h,
+                "💡 Empfehlung": lade_empfehlung,
+                "Farbe": lade_color
+            })
 
-    # KPIs
-    g_krit = len(gabel_df[gabel_df["Status"] == "🚨 Kritisch"])
-    g_drng = len(gabel_df[gabel_df["Status"] == "⚠️ Dringend"])
-    g_norm = len(gabel_df[gabel_df["Status"] == "✅ Normal"])
+    if energy_data:
+        energy_df = pd.DataFrame(energy_data)
 
-    gc1, gc2, gc3 = st.columns(3)
-    with gc1:
-        kpi_card("🚨 Kritisch", g_krit, "sofort warten", "#ef4444")
-    with gc2:
-        kpi_card("⚠️ Dringend", g_drng, "bald warten", "#f59e0b")
-    with gc3:
-        kpi_card("✅ Normal", g_norm, "kein Handlungsbedarf", "#22c55e")
-
-    st.dataframe(
-        gabel_df[[
-            "Stapler", "Name", "Typ", "Bediener",
-            "🔋 Batterie RUL [h]", "🛞 Reifen RUL [h]",
-            "⚙️ Motor RUL [h]", "🛢️ Öl RUL [h]", "Status"
-        ]],
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # Chart
-    fig_gabel = go.Figure()
-
-    komponenten = ["🔋 Batterie RUL [h]", "🛞 Reifen RUL [h]",
-                   "⚙️ Motor RUL [h]", "🛢️ Öl RUL [h]"]
-    colors_g = ["#38bdf8", "#a855f7", "#22c55e", "#f59e0b"]
-
-    for comp, col in zip(komponenten, colors_g):
-        fig_gabel.add_trace(go.Bar(
-            name=comp,
-            x=gabel_df["Stapler"],
-            y=gabel_df[comp],
-            marker_color=col
-        ))
-
-    fig_gabel.update_layout(
-        barmode="group",
-        paper_bgcolor="#111827",
-        plot_bgcolor="#0f172a",
-        font=dict(color="white"),
-        height=400,
-        title=dict(
-            text="Gabelstapler – Verbleibende Nutzungszeit pro Komponente",
-            font=dict(color="white")
-        ),
-        xaxis=dict(gridcolor="#334155", color="white"),
-        yaxis=dict(
-            title="RUL [Stunden]",
-            gridcolor="#334155",
-            color="white"
+        fig_energy = px.bar(
+            energy_df,
+            x="Stapler",
+            y="🔋 Ladung %",
+            color="💡 Empfehlung",
+            color_discrete_map={
+                "Jetzt laden": "#ef4444",
+                "Bald laden": "#f59e0b",
+                "OK": "#22c55e"
+            },
+            title="Batteriestatus – Alle Elektrostapler",
+            text="🔋 Ladung %"
         )
-    )
 
-    st.plotly_chart(fig_gabel, use_container_width=True)
+        fig_energy.add_hline(
+            y=30, line_dash="dash", line_color="#ef4444",
+            annotation_text="⚠️ Sofort laden",
+            annotation_font_color="#ef4444"
+        )
+        fig_energy.add_hline(
+            y=50, line_dash="dash", line_color="#f59e0b",
+            annotation_text="Bald laden",
+            annotation_font_color="#f59e0b"
+        )
 
+        fig_energy.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white"),
+            height=380
+        )
+        st.plotly_chart(fig_energy, use_container_width=True)
+
+        st.dataframe(
+            energy_df[[
+                "Stapler", "Name", "Batterietyp",
+                "🔋 Ladung %", "⏱️ Restzeit [h]", "💡 Empfehlung"
+            ]],
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("Keine Elektrostapler in der aktuellen Flotte.")
 # =========================================================
-# Tab 4: KI und Berichte
+# Tab 4: KPI & Berichte
 # =========================================================
 with tab4:
     st.header("📊 KPI & Berichte")
 
-    # ============================
-    # KPI Simulation
-    # ============================
     st.subheader("📊 KPI Simulation: Traditionell vs. Predictive")
 
     kpi_events = st.slider(
-        "Anzahl simulierter Werkzeugereignisse", 50, 500, 180, 10
+        "Anzahl simulierter Wartungsereignisse",
+        50, 500, 180, 10
     )
 
     kpi_df, summary = simulate_kpis(
-        n_events=kpi_events, seed=int(seed) + 400
+        n_events=kpi_events,
+        seed=int(seed) + 400
     )
 
-    st.dataframe(summary, use_container_width=True)
-
-    traditional = summary[summary["Methode"] == "Traditionell"].iloc[0]
+    traditional = summary[
+        summary["Methode"] == "Traditionell"
+    ].iloc[0]
     predictive = summary[
-        summary["Methode"] == "Predictive Tool Logistics"
+        summary["Methode"] == "Predictive Maintenance"
     ].iloc[0]
 
     downtime_reduction = (
-        1 - predictive["Gesamtstillstand_min"] /
-        traditional["Gesamtstillstand_min"]
+        1 - predictive["Gesamtstillstand_h"] /
+        traditional["Gesamtstillstand_h"]
     ) * 100
 
-    emergency_reduction = (
-        1 - predictive["Eiltransporte"] /
-        max(traditional["Eiltransporte"], 1)
+    notfall_reduction = (
+        1 - predictive["Notfallwartungen"] /
+        max(traditional["Notfallwartungen"], 1)
     ) * 100
 
     cost_reduction = (
@@ -2703,167 +2514,174 @@ with tab4:
         traditional["Stillstandskosten_EUR"]
     ) * 100
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        kpi_card("Stillstandsreduktion", f"{downtime_reduction:.1f}%",
-                "gegenüber traditionell", "#22c55e")
-    with col2:
-        kpi_card("Eiltransport-Reduktion", f"{emergency_reduction:.1f}%",
-                "weniger Störungen", "#38bdf8")
-    with col3:
-        kpi_card("Kostenreduktion", f"{cost_reduction:.1f}%",
-                "simulierte Stillstandskosten", "#a855f7")
+    kc1, kc2, kc3 = st.columns(3)
+    with kc1:
+        kpi_card(
+            "Stillstandsreduktion",
+            f"{downtime_reduction:.1f}%",
+            "gegenüber traditionell",
+            "#22c55e"
+        )
+    with kc2:
+        kpi_card(
+            "Notfallwartung-Reduktion",
+            f"{notfall_reduction:.1f}%",
+            "weniger Notfälle",
+            "#38bdf8"
+        )
+    with kc3:
+        kpi_card(
+            "Kostenreduktion",
+            f"{cost_reduction:.1f}%",
+            "Stillstandskosten",
+            "#a855f7"
+        )
 
     st.markdown("---")
 
-    colA, colB = st.columns(2)
-    with colA:
-        fig1 = px.bar(summary, x="Methode", y="Gesamtstillstand_min",
-                     color="Methode",
-                     title="Gesamter Maschinenstillstand [min]")
-        fig1.update_layout(paper_bgcolor="#111827",
-                          plot_bgcolor="#0f172a",
-                          font=dict(color="white"))
+    ka, kb = st.columns(2)
+    with ka:
+        fig1 = px.bar(
+            summary,
+            x="Methode",
+            y="Gesamtstillstand_h",
+            color="Methode",
+            title="Gesamter Stillstand [h]"
+        )
+        fig1.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white")
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
-    with colB:
-        fig2 = px.bar(summary, x="Methode", y="Eiltransporte",
-                     color="Methode", title="Anzahl Eiltransporte")
-        fig2.update_layout(paper_bgcolor="#111827",
-                          plot_bgcolor="#0f172a",
-                          font=dict(color="white"))
+    with kb:
+        fig2 = px.bar(
+            summary,
+            x="Methode",
+            y="Notfallwartungen",
+            color="Methode",
+            title="Anzahl Notfallwartungen"
+        )
+        fig2.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white")
+        )
         st.plotly_chart(fig2, use_container_width=True)
 
-    colC, colD = st.columns(2)
-    with colC:
-        fig3 = px.bar(summary, x="Methode",
-                     y="Rechtzeitige_Bereitstellung",
-                     color="Methode",
-                     title="Anteil rechtzeitiger Bereitstellungen")
-        fig3.update_layout(paper_bgcolor="#111827",
-                          plot_bgcolor="#0f172a",
-                          font=dict(color="white"))
+    kc, kd = st.columns(2)
+    with kc:
+        fig3 = px.bar(
+            summary,
+            x="Methode",
+            y="Rechtzeitige_Wartung",
+            color="Methode",
+            title="Rechtzeitige Wartungen [%]"
+        )
+        fig3.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white")
+        )
         st.plotly_chart(fig3, use_container_width=True)
 
-    with colD:
-        fig4 = px.bar(summary, x="Methode",
-                     y="Durchschnittliches_Ausschussrisiko",
-                     color="Methode",
-                     title="Durchschnittliches Ausschussrisiko")
-        fig4.update_layout(paper_bgcolor="#111827",
-                          plot_bgcolor="#0f172a",
-                          font=dict(color="white"))
+    with kd:
+        fig4 = px.bar(
+            summary,
+            x="Methode",
+            y="Staplernutzung",
+            color="Methode",
+            title="Staplernutzung [%]"
+        )
+        fig4.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#0f172a",
+            font=dict(color="white")
+        )
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("---")
 
-    # ============================
     # Schichtbericht
-    # ============================
     st.subheader("📄 Automatischer Schichtbericht")
 
-    now = pd.Timestamp.now()
-    current_shift = get_current_shift()
+    now_b = pd.Timestamp.now()
+    elapsed_min = (time.time() - st.session_state.start_time) / 60
+    total_sav = elapsed_min / 60 * fleet["Stillstandskosten_EUR_h"].mean() * 0.42
 
-    col_s1, col_s2, col_s3 = st.columns(3)
-    with col_s1:
-        kpi_card("Aktuelle Schicht", current_shift.split()[0],
-                current_shift, "#38bdf8")
-    with col_s2:
-        kpi_card("Datum", now.strftime("%d.%m.%Y"),
-                now.strftime("%H:%M:%S Uhr"), "#22c55e")
-    with col_s3:
-        kpi_card("Werk", "Werk 1 – München",
-                "FertigungsTech GmbH", "#a855f7")
+    sofort_c = len(fleet[fleet["Entscheidung"] == "SOFORT_STOPP"])
+    wartung_c = len(fleet[fleet["Entscheidung"] == "WARTUNGSAUFTRAG"])
+    teile_c = len(fleet[fleet["Entscheidung"] == "TEILE_FEHLEN"])
+    monitor_c = len(fleet[fleet["Entscheidung"] == "MONITORING"])
 
-    sofort_count = len(fleet[fleet["Entscheidung"] == "SOFORT_STOPP"])
-    auto_count = len(fleet[fleet["Entscheidung"] == "AUTO_AUFTRAG"])
-    bestand_count = len(fleet[fleet["Entscheidung"] == "BESTANDSRISIKO"])
-    vorwarnung_count = len(fleet[fleet["Entscheidung"] == "VORWARNUNG"])
-    monitoring_count = len(fleet[fleet["Entscheidung"] == "MONITORING"])
+    sb1, sb2, sb3 = st.columns(3)
+    with sb1:
+        kpi_card(
+            "Aktuelle Schicht",
+            get_current_shift().split()[0],
+            get_current_shift(),
+            "#38bdf8"
+        )
+    with sb2:
+        kpi_card(
+            "Datum",
+            now_b.strftime("%d.%m.%Y"),
+            now_b.strftime("%H:%M Uhr"),
+            "#22c55e"
+        )
+    with sb3:
+        kpi_card(
+            "Eingesparte Kosten",
+            f"{total_sav:.2f} €",
+            "seit Systemstart",
+            "#a855f7"
+        )
 
-    col_a, col_b, col_c, col_d = st.columns(4)
-    with col_a:
-        kpi_card("🚨 Sofort-Stopps", sofort_count,
-                "kritische Eingriffe", "#ef4444")
-    with col_b:
-        kpi_card("📦 Auto-Aufträge", auto_count,
-                "automatisch ausgelöst", "#22c55e")
-    with col_c:
-        kpi_card("⚠️ Bestandsrisiken", bestand_count,
-                "Lagerproblem erkannt", "#f59e0b")
-    with col_d:
-        kpi_card("✅ Monitoring", monitoring_count,
-                "Normalbetrieb", "#38bdf8")
-
-    st.markdown("---")
-
-    elapsed_minutes = (
-        time.time() - st.session_state.start_time
-    ) / 60
-    avg_downtime_cost = fleet["Stillstandskosten_EUR_min"].mean()
-    total_savings = elapsed_minutes * avg_downtime_cost * 0.38
-    avg_confidence = fleet["Confidence"].mean()
-    total_risk = fleet["Risk_Score"].sum()
-
-    kritische = fleet[fleet["Entscheidung"].isin([
-        "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
+    kritische_b = fleet[fleet["Entscheidung"].isin([
+        "SOFORT_STOPP", "WARTUNGSAUFTRAG", "TEILE_FEHLEN"
     ])]
 
     kritische_liste = ""
-    for _, row in kritische.iterrows():
-        machine_name = MACHINE_REGISTRY.get(
-            row["Maschine"], {}
-        ).get("name", "")
+    for _, row in kritische_b.iterrows():
         kritische_liste += (
-            f"• {row['Maschine']} ({machine_name}): "
-            f"{row['Entscheidung']} – RUL: {row['RUL_min']} min\n"
+            f"• {row['Stapler']} ({row['Name']}): "
+            f"{row['Entscheidung']} – RUL: {row['RUL_min_h']} h\n"
         )
 
     bericht_text = f"""
-SCHICHTBERICHT – FertigungsTech GmbH – Werk 1, München
+SCHICHTBERICHT – LogisTech GmbH – Werk 1, Hamburg
 {"="*55}
-Datum:           {now.strftime("%d.%m.%Y")}
-Uhrzeit:         {now.strftime("%H:%M:%S")} Uhr
-Schicht:         {current_shift}
-Erstellt von:    Predictive Tool Logistics System (KI)
+Datum:         {now_b.strftime("%d.%m.%Y")}
+Uhrzeit:       {now_b.strftime("%H:%M:%S")} Uhr
+Schicht:       {get_current_shift()}
+System:        Predictive Gabelstapler Maintenance (KI)
 {"="*55}
 
 ZUSAMMENFASSUNG
----------------
-Überwachte Maschinen:     {len(fleet)}
-Sofort-Stopps:            {sofort_count}
-Automatische Aufträge:    {auto_count}
-Bestandsrisiken:          {bestand_count}
-Vorwarnungen:             {vorwarnung_count}
-Normalbetrieb:            {monitoring_count}
-
-KI-KENNZAHLEN
--------------
-Durchschnittliche RUL:    {fleet['RUL_min'].mean():.1f} min
-Durchschnittl. Confidence:{avg_confidence*100:.1f}%
-Gesamt-Risiko-Index:      {total_risk:.0f}
+Überwachte Stapler:    {len(fleet)}
+Sofort-Stopps:         {sofort_c}
+Wartungsaufträge:      {wartung_c}
+Teile fehlen:          {teile_c}
+Normalbetrieb:         {monitor_c}
 
 WIRTSCHAFTLICHE KENNZAHLEN
----------------------------
-Systembetrieb:            {int(elapsed_minutes)} Minuten
-Eingesparte Kosten:       {total_savings:.2f} €
-Vermiedene Stillstände:   {int(elapsed_minutes/45)}
-Vermiedene Eiltransporte: {int(elapsed_minutes/28)}
+Systembetrieb:         {int(elapsed_min)} Minuten
+Eingesparte Kosten:    {total_sav:.2f} €
+Verm. Ausfälle:        {int(elapsed_min/60/3)}
+Verm. Notfallwartung:  {int(elapsed_min/60/2)}
 
-KRITISCHE MASCHINEN
--------------------
-{kritische_liste if kritische_liste else "Keine kritischen Maschinen."}
+KRITISCHE STAPLER
+{kritische_liste if kritische_liste else "Keine kritischen Stapler."}
 
 EMPFEHLUNGEN
-------------
-{"• Sofortige Überprüfung erforderlich!" if sofort_count > 0 else "• Normaler Betrieb kann fortgesetzt werden"}
-{"• Werkzeugbestand für " + str(bestand_count) + " Maschinen prüfen" if bestand_count > 0 else ""}
-{"• " + str(auto_count) + " Werkzeuge automatisch bestellt" if auto_count > 0 else ""}
+{"• Sofortige Überprüfung erforderlich!" if sofort_c > 0 else "• Normaler Betrieb kann fortgesetzt werden"}
+{"• Ersatzteile für " + str(teile_c) + " Stapler prüfen" if teile_c > 0 else ""}
+{"• " + str(wartung_c) + " Wartungsaufträge automatisch erstellt" if wartung_c > 0 else ""}
 
 {"="*55}
-SYSTEM: Predictive Tool Logistics – FertigungsTech GmbH
-KI-Modell: Random Forest + Gemini AI
+SYSTEM: Predictive Gabelstapler Maintenance
+KI: Vibration + Sensor Fusion + Gemini AI
 {"="*55}
     """
 
@@ -2872,201 +2690,222 @@ KI-Modell: Random Forest + Gemini AI
     st.download_button(
         label="📥 Schichtbericht herunterladen",
         data=bericht_text,
-        file_name=f"Schichtbericht_{now.strftime('%Y%m%d_%H%M')}.txt",
+        file_name=f"Schichtbericht_{now_b.strftime('%Y%m%d_%H%M')}.txt",
         mime="text/plain"
     )
-
 # =========================================================
 # Tab 5: Architektur
 # =========================================================
 with tab5:
-    st.header("🧩 Architektur, Innovationskern und Präsentations-Pitch")
+    st.header("🧩 Architektur & Innovationskern")
 
     st.subheader("Systemarchitektur")
-
     st.code("""
-Akustische Werkzeugsignale (CNC-Maschinen)
+Gabelstapler Vibrations- & Sensordaten
         ↓
-Audio Feature Extraction (Librosa)
+Multi-Sensor Fusion
+(Vibration + Temperatur + Batterie + Hydraulik + Strom)
         ↓
-KI-Modell zur Werkzeugzustandserkennung (Random Forest)
+KI-Modell: Zustandsklassifikation
+(Gut / Warnung / Kritisch / Ausfall)
         ↓
-Restlebensdauer-Prognose RUL
+RUL-Prognose pro Komponente
+(Batterie / Motor / Reifen / Hydraulik / Bremsen)
         ↓
-Vergleich mit logistischer Vorlaufzeit
+Vergleich mit Wartungsvorlaufzeit
         ↓
 Automatische Entscheidung:
-    - Monitoring
-    - Vorwarnung
-    - Bedienerfreigabe
-    - Automatischer Bereitstellungsauftrag
-    - Sofort-Stopp
+    MONITORING / VORWARNUNG / WARTUNGSAUFTRAG
+    TECHNIKER_FREIGABE / SOFORT_STOPP / TEILE_FEHLEN
         ↓
-Werkzeuglager → Voreinstellstation → AGV/FTS → CNC-Maschine
+Werkstatt → Techniker → Gabelstapler
         ↓
-Gabelstapler Predictive Maintenance (Erweiterung)
+Energy Optimizer: Optimale Ladeplanung
     """, language="text")
 
-    st.subheader("Innovationskern")
-
+    st.subheader("🚀 Innovationskern")
     st.success("""
-    Der Prototyp verbindet akustische KI-Erkennung mit automatisierter 
-    Produktionslogistik. Er wandelt Sensordaten direkt in logistische 
-    Entscheidungen um: Wann muss ein Ersatzwerkzeug vorbereitet werden?
-    Zusätzlich überwacht das System Gabelstapler und ermöglicht damit
-    eine vollständige Fabriklogistik-Überwachung.
+    Das System ist weltweit einzigartig:
+    Es kombiniert Multi-Sensor-Fusion mit KI-basierter
+    Komponentendiagnose und automatisierter Wartungslogistik
+    für Gabelstapler. Kein anderes System auf dem Markt
+    verbindet RUL-Prognose pro Komponente mit automatischer
+    Wartungsplanung und Energy Optimizer in Echtzeit.
     """)
 
-    st.subheader("Industrie 4.0 Bausteine")
+    st.subheader("Was macht unser System einzigartig?")
+    unique = pd.DataFrame({
+        "Feature": [
+            "🧬 Komponenten-DNA",
+            "⚡ Energy Optimizer",
+            "🔗 Domino Effekt",
+            "📅 Predictiver Kalender",
+            "🤖 Gemini AI Chat",
+            "🔔 Live Alarm Center",
+            "💰 Live Einsparungsrechner"
+        ],
+        "Beschreibung": [
+            "RUL pro Komponente: Batterie, Motor, Reifen, Hydraulik, Bremsen",
+            "Optimaler Ladezeitpunkt für jeden Elektrostapler",
+            "Kettenreaktion bei Staplerausfall vorausberechnen",
+            "Wartungstermine automatisch basierend auf RUL planen",
+            "KI-Assistent kennt alle Live-Daten der Flotte",
+            "Echtzeit-Alarme bei kritischen Zuständen",
+            "Live-Berechnung der eingesparten Kosten"
+        ],
+        "Status": [
+            "✅ Aktiv",
+            "✅ Aktiv",
+            "✅ Aktiv",
+            "✅ Aktiv",
+            "✅ Aktiv",
+            "✅ Aktiv",
+            "✅ Aktiv"
+        ]
+    })
+    st.dataframe(unique, use_container_width=True, hide_index=True)
 
+    st.subheader("Industrie 4.0 Bausteine")
     ind40 = pd.DataFrame({
-        "Industrie-4.0-Baustein": [
+        "Baustein": [
             "IoT / Sensorik",
             "KI / Machine Learning",
             "Predictive Analytics",
-            "Produktionslogistik",
+            "Wartungslogistik",
             "Automatisierung",
             "Digital Twin",
             "Smart Factory",
             "Generative KI"
         ],
-        "Umsetzung im Prototyp": [
-            "Akustische Werkzeugsignale + Sensor-Daten",
-            "Random Forest Klassifikation",
-            "RUL-Prognose + Gabelstapler Wartung",
-            "Werkzeuglager, Voreinstellung, AGV/FTS",
-            "Automatische Bereitstellungsentscheidung",
-            "Digital Twin Soundtrack – Akustischer Fingerabdruck",
-            "Control Tower mit Live-Daten und Domino-Effekt",
-            "Gemini AI Chat Assistant"
+        "Umsetzung": [
+            "Vibration, Temperatur, Batterie, Hydraulik, Strom",
+            "KI-Zustandsklassifikation mit Confidence Score",
+            "RUL-Prognose pro Komponente + Energy Optimizer",
+            "Techniker, Ersatzteillager, Wartungsplanung",
+            "Automatische Wartungsaufträge und Entscheidungen",
+            "Digitale Lagerkarte mit Live-Positionen",
+            "Control Tower mit Echtzeit-Alarmen",
+            "Gemini AI Chat mit Live-Flottendaten"
         ]
     })
-
     st.dataframe(ind40, use_container_width=True, hide_index=True)
 
-    st.markdown("---")
-
-    st.subheader("Präsentations-Pitch")
-
-    st.info("""
-    Unser Projekt „Predictive Tool Logistics" verbindet KI-basierte 
-    akustische Werkzeugzustandserkennung mit automatisierter Logistik.
-    
-    Das System analysiert CNC-Werkzeugsignale, prognostiziert den 
-    Werkzeugzustand und vergleicht die Restlebensdauer mit der 
-    logistischen Vorlaufzeit. Wenn die Zeit nicht mehr ausreicht, 
-    wird automatisch ein Bereitstellungsauftrag erzeugt.
-    
-    Zusätzlich überwacht das System Gabelstapler im Werk und sagt 
-    voraus, wann Batterie, Reifen oder Motor gewartet werden müssen.
-    
-    Dadurch werden ungeplante Stillstände, Eiltransporte und 
-    Ausschussrisiken deutlich reduziert.
-    """)
-
-    st.subheader("Risiken und Gegenmaßnahmen")
-
-    risks = pd.DataFrame({
-        "Risiko": [
-            "Reale Fabrikgeräusche stören Audioanalyse",
-            "KI braucht echte Trainingsdaten",
-            "Falsche Prognosen möglich",
-            "Integration in MES/WMS komplex"
-        ],
-        "Gegenmaßnahme": [
-            "Kombination mit Vibration und Spindelstrom",
-            "Pilotphase mit echten CNC-Daten",
-            "Confidence Score + Sicherheitsmarge",
-            "Schnittstellen über OPC-UA, MQTT, REST API"
-        ]
-    })
-
-    st.dataframe(risks, use_container_width=True, hide_index=True)
-
     st.subheader("Technologie-Stack")
-
     tech = pd.DataFrame({
         "Technologie": [
             "Python + Streamlit",
-            "Scikit-Learn",
-            "Librosa",
+            "NumPy + Pandas",
             "Plotly",
+            "Scikit-Learn",
             "Google Gemini AI",
-            "Pandas + NumPy",
-            "SoundFile"
+            "Requests"
         ],
         "Verwendung": [
             "Dashboard und Web-Interface",
-            "Random Forest KI-Modell",
-            "Audio Feature Extraction",
-            "Interaktive Visualisierungen",
-            "KI-Chat Assistant",
             "Datenverarbeitung und Simulation",
-            "Audio-Generierung und -Verarbeitung"
+            "Interaktive Visualisierungen",
+            "KI-Klassifikation",
+            "KI-Chat Assistant",
+            "API-Kommunikation"
         ]
     })
-
     st.dataframe(tech, use_container_width=True, hide_index=True)
+
+    st.subheader("Risiken und Gegenmaßnahmen")
+    risks = pd.DataFrame({
+        "Risiko": [
+            "Sensorrauschen verfälscht Diagnose",
+            "KI braucht echte Trainingsdaten",
+            "Ersatzteile nicht verfügbar",
+            "Integration in bestehende Systeme"
+        ],
+        "Gegenmaßnahme": [
+            "Multi-Sensor Fusion + Confidence Score",
+            "Pilotphase mit echten Gabelstapler-Daten",
+            "Automatische Bestandsprüfung + Bestellung",
+            "REST API + MQTT + OPC-UA Schnittstellen"
+        ]
+    })
+    st.dataframe(risks, use_container_width=True, hide_index=True)
+
+    st.subheader("Präsentations-Pitch")
+    st.info("""
+    Unser System „Predictive Gabelstapler Maintenance" ist eine
+    weltweit einzigartige Lösung für die vorausschauende Wartung
+    von Gabelstaplern in Logistikzentren.
+
+    Das System überwacht kontinuierlich Vibration, Temperatur,
+    Batteriestatus, Hydraulikdruck und Motorstrom jedes Staplers.
+    Eine KI klassifiziert den Zustand und prognostiziert die
+    verbleibende Betriebszeit jeder Komponente einzeln.
+
+    Wenn die Zeit nicht mehr ausreicht, wird automatisch ein
+    Wartungsauftrag erstellt, Techniker werden informiert und
+    Ersatzteile werden reserviert – alles bevor der Stapler ausfällt.
+
+    Zusätzlich optimiert das System die Ladezeiten der
+    Elektrostapler, um Produktionsunterbrechungen zu minimieren.
+    """)
+
 # =========================================================
-# Tab 6: KI Chat Assistant
-# ========================================================= 
+# Tab 6: KI-Assistent
+# =========================================================
 with tab6:
-    st.header("🤖 KI Chat Assistant – Powered by Gemini AI")
+    st.header("🤖 KI-Assistent – Powered by Gemini AI")
 
     st.markdown("""
-    <div style="background:linear-gradient(135deg, #1e1b4b, #312e81);
-                border:1px solid #6366f1; border-radius:12px; padding:12px;
-                margin-bottom:16px;">
-        <div style="color:#a5b4fc; font-size:13px;">
-            🧠 Dieser Chat ist mit Google Gemini AI verbunden und kennt
-            alle aktuellen Maschinendaten von FertigungsTech GmbH.
-            Stellen Sie Fragen auf Deutsch, Englisch oder Arabisch.
+    <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);
+                border:1px solid #6366f1;border-radius:12px;
+                padding:12px;margin-bottom:16px;">
+        <div style="color:#a5b4fc;font-size:13px;">
+            🧠 Dieser Assistent kennt alle Live-Daten der Gabelstapler-Flotte
+            von LogisTech GmbH. Fragen auf Deutsch, Englisch oder Arabisch.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    try:
+        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    except:
+        GEMINI_API_KEY = ""
+        st.warning("""
+        ⚠️ Kein API Key gefunden.
+        Bitte in Streamlit Secrets hinzufügen: GEMINI_API_KEY
+        """)
 
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    # بناء ملخص بيانات المصنع
-    def build_factory_context():
+    def build_fleet_context():
         kritisch = fleet[fleet["Entscheidung"].isin([
-            "SOFORT_STOPP", "AUTO_AUFTRAG", "BESTANDSRISIKO"
+            "SOFORT_STOPP", "WARTUNGSAUFTRAG", "TEILE_FEHLEN"
         ])]
-        
-        context = f"""
-Du bist der KI-Assistent des Predictive Tool Logistics Systems 
-der FertigungsTech GmbH – Werk 1, München.
 
-AKTUELLER FABRIKSTATUS:
-- Gesamtmaschinen: {len(fleet)}
-- Kritische Maschinen: {len(kritisch)}
-- Durchschnittliche RUL: {fleet['RUL_min'].mean():.1f} min
+        return f"""
+Du bist der KI-Assistent des Predictive Gabelstapler
+Maintenance Systems der LogisTech GmbH – Werk 1, Hamburg.
+
+AKTUELLER FLOTTENSTATUS:
+- Gesamtstapler: {len(fleet)}
+- Kritische Stapler: {len(kritisch)}
+- Durchschnittliche RUL: {fleet['RUL_min_h'].mean():.1f} h
 - Risiko-Index: {fleet['Risk_Score'].sum():.0f}
 - Aktuelle Schicht: {get_current_shift()}
 
-KRITISCHE MASCHINEN:
-{kritisch[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string() if len(kritisch) > 0 else 'Keine kritischen Maschinen'}
+KRITISCHE STAPLER:
+{kritisch[['Stapler', 'Name', 'KI_Zustand', 'RUL_min_h', 'Entscheidung']].to_string() if len(kritisch) > 0 else 'Keine kritischen Stapler'}
 
-ALLE MASCHINEN ÜBERSICHT:
-{fleet[['Maschine', 'KI_Zustand', 'RUL_min', 'Entscheidung', 'Risk_Score']].to_string()}
+ALLE STAPLER:
+{fleet[['Stapler', 'Name', 'KI_Zustand', 'RUL_min_h', 'Entscheidung', 'Risk_Score']].to_string()}
 
 Beantworte Fragen auf Deutsch, Englisch oder Arabisch.
-Sei präzise und professionell.
+Sei präzise, professionell und hilfreich.
         """
-        return context
 
-    # عرض سجل المحادثة
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # حقل الإدخال
     frage = st.chat_input(
         "Frage auf Deutsch, Englisch oder Arabisch...",
-        key="gemini_chat_input"
+        key="gemini_chat_final"
     )
 
     if frage:
@@ -3079,20 +2918,23 @@ Sei präzise und professionell.
             st.markdown(frage)
 
         with st.chat_message("assistant"):
-            with st.spinner("Gemini AI analysiert..."):
+            with st.spinner("KI analysiert Flottendaten..."):
                 try:
-                    import requests
-
-                    factory_context = build_factory_context()
-
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                    url = (
+                        f"https://generativelanguage.googleapis.com"
+                        f"/v1beta/models/gemini-2.5-flash"
+                        f":generateContent?key={GEMINI_API_KEY}"
+                    )
 
                     payload = {
                         "contents": [
                             {
                                 "parts": [
                                     {
-                                        "text": f"{factory_context}\n\nFrage: {frage}"
+                                        "text": (
+                                            f"{build_fleet_context()}"
+                                            f"\n\nFrage: {frage}"
+                                        )
                                     }
                                 ]
                             }
@@ -3111,9 +2953,17 @@ Sei präzise und professionell.
 
                     if response.status_code == 200:
                         data = response.json()
-                        antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                        try:
+                            antwort = data["candidates"][0]["content"]["parts"][0]["text"]
+                            if not antwort or antwort.strip() == "":
+                                antwort = "⚠️ Keine Antwort. Bitte erneut versuchen."
+                        except (KeyError, IndexError) as e:
+                            antwort = f"⚠️ Fehler: {str(e)}\nResponse: {str(data)}"
                     else:
-                        antwort = f"⚠️ API Fehler: {response.status_code}. Bitte API Key prüfen."
+                        antwort = (
+                            f"⚠️ API Fehler: {response.status_code}\n"
+                            f"{response.text}"
+                        )
 
                 except Exception as e:
                     antwort = f"⚠️ Verbindungsfehler: {str(e)}"
@@ -3125,9 +2975,8 @@ Sei präzise und professionell.
             "content": antwort
         })
 
-    # زر مسح المحادثة
     col_chat, col_clear = st.columns([4, 1])
     with col_clear:
-        if st.button("🗑️ Löschen", key="clear_gemini_chat"):
+        if st.button("🗑️ Löschen", key="clear_final"):
             st.session_state.chat_history = []
             st.rerun()
