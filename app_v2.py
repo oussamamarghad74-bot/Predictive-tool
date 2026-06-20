@@ -5,16 +5,9 @@ import plotly.express as px
 
 import numpy as np
 import pandas as pd
-import librosa
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
-import soundfile as sf
-import io
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix
 
 # =========================================================
 # Global Settings – Gabelstapler Predictive Maintenance
@@ -275,17 +268,10 @@ if "update_counter" not in st.session_state:
     st.session_state.update_counter = 0
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-    
-rng_live = np.random.default_rng(
-    int(time.time() / 10)
-)
-st.sidebar.caption(
-    f"🔄 Live Update | {time.strftime('%H:%M:%S')} | #{st.session_state.update_counter}"
-)
-
-st.sidebar.caption(
-    f"🔄 Live Update alle 30s | {time.strftime('%H:%M:%S')}"
-)
+if time.time() - st.session_state.last_update > 5:
+    st.session_state.last_update = time.time()
+    st.session_state.update_counter += 1
+    st.rerun()
 
 # =========================================================
 # Custom CSS Design
@@ -1024,60 +1010,6 @@ def factory_map(df):
 
     return fig
 
-
-# =========================================================
-# KPI Simulation
-# =========================================================
-
-def simulate_kpis(n_events=180, seed=42):
-    rng = np.random.default_rng(seed)
-    rows = []
-
-    for method in ["Traditionell", "Predictive Tool Logistics"]:
-        for _ in range(n_events):
-            logistics_time = rng.uniform(20, 55)
-            downtime_cost = rng.uniform(90, 240)
-
-            if method == "Traditionell":
-                notice_before_failure = rng.uniform(0, 16)
-                emergency_prob = 0.72
-                scrap_risk = np.clip(rng.normal(0.30, 0.10), 0, 1)
-                tool_utilization = np.clip(rng.normal(0.69, 0.09), 0, 1)
-            else:
-                notice_before_failure = rng.uniform(28, 80)
-                emergency_prob = 0.18
-                scrap_risk = np.clip(rng.normal(0.11, 0.05), 0, 1)
-                tool_utilization = np.clip(rng.normal(0.86, 0.05), 0, 1)
-
-            downtime = max(0, logistics_time - notice_before_failure)
-            emergency = 1 if rng.random() < emergency_prob and downtime > 0 else 0
-            on_time = 1 if downtime == 0 else 0
-
-            rows.append({
-                "Methode": method,
-                "Logistikzeit_min": logistics_time,
-                "Erkennungszeit_vor_Ausfall_min": notice_before_failure,
-                "Stillstand_min": downtime,
-                "Stillstandskosten_EUR": downtime * downtime_cost,
-                "Eiltransport": emergency,
-                "Rechtzeitig": on_time,
-                "Ausschussrisiko": scrap_risk,
-                "Werkzeugausnutzung": tool_utilization
-            })
-
-    df = pd.DataFrame(rows)
-
-    summary = df.groupby("Methode").agg(
-        Gesamtstillstand_min=("Stillstand_min", "sum"),
-        Durchschnittlicher_Stillstand_min=("Stillstand_min", "mean"),
-        Stillstandskosten_EUR=("Stillstandskosten_EUR", "sum"),
-        Eiltransporte=("Eiltransport", "sum"),
-        Rechtzeitige_Bereitstellung=("Rechtzeitig", "mean"),
-        Durchschnittliches_Ausschussrisiko=("Ausschussrisiko", "mean"),
-        Werkzeugausnutzung=("Werkzeugausnutzung", "mean")
-    ).reset_index()
-
-    return df, summary
 # =========================================================
 # Header
 # =========================================================
