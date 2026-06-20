@@ -473,10 +473,6 @@ def badge(text, color):
     """
 
 
-def audio_to_wav_bytes(y, sr=SR):
-    buffer = io.BytesIO()
-    sf.write(buffer, y, sr, format="WAV")
-    return buffer.getvalue()
 
 # =========================================================
 # Gabelstapler Fleet Generation
