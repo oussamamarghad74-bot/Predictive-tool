@@ -3680,8 +3680,6 @@ ANTWORTREGELN
 - Antworte auf Deutsch, Englisch oder Arabisch je nach Frage.
 - Sei präzise, professionell, technisch korrekt und hilfreich.
         """
-        """
-
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
