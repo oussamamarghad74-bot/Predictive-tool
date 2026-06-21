@@ -2292,7 +2292,7 @@ with tab2:
 
     audio_source = st.radio(
         "Audioquelle wählen",
-        ["🔊 Simuliertes Motorgeräusch", "📁 Eigene Audiodatei hochladen"],
+        ["🔊 Simuliertes Motorgeräusch", "📁 Eigene Audiodatei hochladen", "🎙️ Live-Mikrofonaufnahme"],
         horizontal=True,
         key="audio_source_t2"
     )
@@ -2308,7 +2308,7 @@ with tab2:
             seed=live_seed
         )
         st.caption(f"Simuliertes Motorgeräusch für {selected['Stapler']} – Zustand: {selected['Ist_Zustand']}")
-    else:
+    elif audio_source == "📁 Eigene Audiodatei hochladen":
         uploaded_audio = st.file_uploader(
             "Audiodatei hochladen (.wav, .mp3)",
             type=["wav", "mp3"],
@@ -2319,6 +2319,15 @@ with tab2:
             st.caption(f"Hochgeladene Datei: {uploaded_audio.name}")
         else:
             st.info("Bitte eine Audiodatei hochladen, um die KI-Diagnose zu starten.")
+            analysis_audio = None
+    else:  # 🎙️ Live-Mikrofonaufnahme
+        st.info("🎙️ Halte dein Smartphone in der Nähe des Gabelstapler-Motors und nimm 2-3 Sekunden auf.")
+        mic_recording = st.audio_input("Motorgeräusch aufnehmen", key="mic_input_t2")
+        if mic_recording is not None:
+            analysis_audio, _ = librosa.load(mic_recording, sr=SR, duration=DURATION)
+            st.caption("🎙️ Live-Aufnahme vom Mikrofon erfolgreich erfasst.")
+        else:
+            st.info("Bitte eine Aufnahme starten, um die KI-Diagnose zu starten.")
             analysis_audio = None
 
     if analysis_audio is not None:
