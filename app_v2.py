@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 SR = 12000
-DURATION = 2.5
+DURATION = 10
 
 # =========================================================
 # Global Settings – Gabelstapler Predictive Maintenance
@@ -2321,11 +2321,17 @@ with tab2:
             st.info("Bitte eine Audiodatei hochladen, um die KI-Diagnose zu starten.")
             analysis_audio = None
     else:  # 🎙️ Live-Mikrofonaufnahme
-        st.info("🎙️ Halte dein Smartphone in der Nähe des Gabelstapler-Motors und nimm 2-3 Sekunden auf.")
-        mic_recording = st.audio_input("Motorgeräusch aufnehmen", key="mic_input_t2")
+        st.info("🎙️ Halte dein Smartphone mind. 10 Sekunden in der Nähe des Gabelstapler-Motors.")
+        mic_recording = st.audio_input("Motorgeräusch aufnehmen (mind. 10s)", key="mic_input_t2")
         if mic_recording is not None:
-            analysis_audio, _ = librosa.load(mic_recording, sr=SR, duration=DURATION)
-            st.caption("🎙️ Live-Aufnahme vom Mikrofon erfolgreich erfasst.")
+            raw_audio, _ = librosa.load(mic_recording, sr=SR)
+            if len(raw_audio) < SR * DURATION:
+                pad_width = int(SR * DURATION) - len(raw_audio)
+                analysis_audio = np.pad(raw_audio, (0, pad_width), mode="wrap")
+                st.caption(f"🎙️ Aufnahme war kürzer als {DURATION}s – auf {DURATION}s ergänzt (wiederholt).")
+            else:
+                analysis_audio = raw_audio[:int(SR * DURATION)]
+                st.caption(f"🎙️ Live-Aufnahme erfolgreich erfasst ({len(raw_audio)/SR:.1f}s, erste {DURATION}s analysiert).")
         else:
             st.info("Bitte eine Aufnahme starten, um die KI-Diagnose zu starten.")
             analysis_audio = None
