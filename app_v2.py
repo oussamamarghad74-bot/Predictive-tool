@@ -572,7 +572,7 @@ def get_feedback_summary_df():
         }
         for fb in st.session_state.feedback_corrections
     ])
-    # =========================================================
+# =========================================================
 # Feature 4: Uncertainty Quantification
 # Misst, wie UNEINIG sich die einzelnen Bäume des Random
 # Forest sind. Hohe Uneinigkeit = die KI ist sich nicht
@@ -1859,7 +1859,7 @@ scenario = st.sidebar.selectbox(
 )
 
 n_stapler = st.sidebar.slider(
-    "Anzahl Gabelstapler", 4, 12, 8, 1
+    "Anzahl Gabelstapler", 4, 12, 12, 1
 )
 
 global_noise = st.sidebar.slider(
