@@ -1511,13 +1511,77 @@ def make_gauge(title, value, min_val, max_val, unit, color):
 # Factory Map für Gabelstapler
 # =========================================================
 
+def init_position_history():
+    if "position_history" not in st.session_state:
+        st.session_state.position_history = {}
+
+
+def update_stapler_positions(fleet_df, area_bounds=None, step_size=0.18):
+    """
+    Simuliert realistische Bewegung jedes Gabelstaplers innerhalb
+    seines zugewiesenen Bereichs (Random-Walk-Modell). Jeder Stapler
+    bewegt sich pro Update einen kleinen, zufälligen Schritt – die
+    letzten 5 Positionen werden als Bewegungsspur gespeichert.
+    """
+    init_position_history()
+    rng = np.random.default_rng(int(time.time() * 5))
+
+    updated_positions = []
+
+    for _, row in fleet_df.iterrows():
+        sid = row["Stapler"]
+
+        if sid not in st.session_state.position_history:
+            st.session_state.position_history[sid] = [
+                {"x": row["X"], "y": row["Y"]}
+            ]
+
+        last_pos = st.session_state.position_history[sid][-1]
+
+        # Stillstehende/kritische Stapler bewegen sich langsamer
+        speed_factor = 0.3 if row["Ist_Zustand"] in ["Kritisch", "Ausfall"] else 1.0
+
+        dx = rng.normal(0, step_size * speed_factor)
+        dy = rng.normal(0, step_size * speed_factor)
+
+        new_x = np.clip(last_pos["x"] + dx, row["X"] - 1.5, row["X"] + 1.5)
+        new_y = np.clip(last_pos["y"] + dy, row["Y"] - 1.5, row["Y"] + 1.5)
+
+        st.session_state.position_history[sid].append({"x": new_x, "y": new_y})
+        if len(st.session_state.position_history[sid]) > 5:
+            st.session_state.position_history[sid].pop(0)
+
+        updated_positions.append({"Stapler": sid, "X_live": new_x, "Y_live": new_y})
+
+    pos_df = pd.DataFrame(updated_positions)
+    return fleet_df.merge(pos_df, on="Stapler")
+
+
 def factory_map(df):
     color_values = df["Entscheidung"].map(DECISION_COLORS)
 
     fig = go.Figure()
 
+    # Bewegungsspuren (Trails) – letzte 5 Positionen pro Stapler
+    for _, row in df.iterrows():
+        sid = row["Stapler"]
+        history = st.session_state.position_history.get(sid, [])
+        if len(history) > 1:
+            trail_x = [p["x"] for p in history]
+            trail_y = [p["y"] for p in history]
+            fig.add_trace(go.Scatter(
+                x=trail_x, y=trail_y,
+                mode="lines",
+                line=dict(color="rgba(255,255,255,0.25)", width=2),
+                showlegend=False,
+                hoverinfo="skip"
+            ))
+
+    x_col = "X_live" if "X_live" in df.columns else "X"
+    y_col = "Y_live" if "Y_live" in df.columns else "Y"
+
     fig.add_trace(go.Scatter(
-        x=df["X"], y=df["Y"],
+        x=df[x_col], y=df[y_col],
         mode="markers+text",
         text=df["Stapler"],
         textposition="top center",
@@ -1525,7 +1589,8 @@ def factory_map(df):
             size=np.clip(df["Risk_Score"] * 1.2 + 18, 18, 60),
             color=color_values,
             line=dict(color="white", width=1.5),
-            opacity=0.92
+            opacity=0.92,
+            symbol="circle"
         ),
         customdata=np.stack([
             df["Bereich"], df["KI_Zustand"],
@@ -1552,7 +1617,7 @@ def factory_map(df):
     ))
 
     fig.update_layout(
-        title="Digitale Lagerkarte – LogisTech GmbH Werk 1",
+        title="🔴 LIVE – Digitale Lagerkarte – LogisTech GmbH Werk 1",
         paper_bgcolor="#111827",
         plot_bgcolor="#0f172a",
         font=dict(color="white"),
@@ -1892,7 +1957,17 @@ with tab1:
         </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.plotly_chart(factory_map(fleet), use_container_width=True)
+
+    @st.fragment(run_every="3s")
+    def live_factory_map_fragment(fleet_snapshot):
+        fleet_live_pos = update_stapler_positions(fleet_snapshot)
+        st.plotly_chart(
+            factory_map(fleet_live_pos),
+            use_container_width=True,
+            key=f"factory_map_{int(time.time()*5)}"
+        )
+
+    live_factory_map_fragment(fleet)
 
     st.subheader("Priorisierte Flottenliste")
     display_cols = [
@@ -2127,40 +2202,56 @@ with tab2:
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-    # Gauge Charts
+# Gauge Charts – Live Update alle 3 Sekunden ohne Seiten-Reload
     st.subheader("📈 Live Sensor Monitor")
-    g1, g2, g3, g4 = st.columns(4)
 
-    with g1:
-        st.plotly_chart(
-            make_gauge("📳 Vibration",
-                      sensor_data["vibration_mm_s"],
-                      0, 10, " mm/s", "#a855f7"),
-            use_container_width=True
+    @st.fragment(run_every="3s")
+    def live_gauges_fragment(stapler_id, zustand, betriebsstunden, rul_base):
+        live_sensor = get_sensor_reading(
+            stapler_id=stapler_id,
+            zustand=zustand,
+            betriebsstunden=betriebsstunden,
+            seed=int(time.time() * 10)
         )
-    with g2:
-        st.plotly_chart(
-            make_gauge("🌡️ Motor Temp",
-                      sensor_data["motor_temp_c"],
-                      0, 120, "°C", "#f59e0b"),
-            use_container_width=True
-        )
-    with g3:
-        st.plotly_chart(
-            make_gauge("🔋 Batterie",
-                      sensor_data["batterie_pct"],
-                      0, 100, "%", "#22c55e"),
-            use_container_width=True
-        )
-    with g4:
-        st.plotly_chart(
-            make_gauge("⏱️ RUL",
-                      selected["RUL_min_h"],
-                      0, 120, " h", "#38bdf8"),
-            use_container_width=True
-        )
+        rng_g = np.random.default_rng(int(time.time() * 10))
+        rul_live = max(0.1, rul_base + rng_g.normal(0, 0.8))
 
+        g1, g2, g3, g4 = st.columns(4)
+        with g1:
+            st.plotly_chart(
+                make_gauge("📳 Vibration", live_sensor["vibration_mm_s"],
+                          0, 10, " mm/s", "#a855f7"),
+                use_container_width=True,
+                key=f"gauge_vib_{int(time.time()*10)}"
+            )
+        with g2:
+            st.plotly_chart(
+                make_gauge("🌡️ Motor Temp", live_sensor["motor_temp_c"],
+                          0, 120, "°C", "#f59e0b"),
+                use_container_width=True,
+                key=f"gauge_temp_{int(time.time()*10)}"
+            )
+        with g3:
+            st.plotly_chart(
+                make_gauge("🔋 Batterie", live_sensor["batterie_pct"],
+                          0, 100, "%", "#22c55e"),
+                use_container_width=True,
+                key=f"gauge_bat_{int(time.time()*10)}"
+            )
+        with g4:
+            st.plotly_chart(
+                make_gauge("⏱️ RUL", round(rul_live, 1),
+                          0, 120, " h", "#38bdf8"),
+                use_container_width=True,
+                key=f"gauge_rul_{int(time.time()*10)}"
+            )
+        st.caption(f"🔄 Live aktualisiert: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+
+    live_gauges_fragment(
+        selected_stapler, selected["Ist_Zustand"],
+        selected["Betriebsstunden"], selected["RUL_min_h"]
+    )
+    
     st.markdown("---")
 
     # Komponenten RUL
