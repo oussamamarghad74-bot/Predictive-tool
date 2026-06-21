@@ -273,7 +273,7 @@ def plot_audio_mel(y, sr=SR):
     ax.set_ylabel("Mel-Bänder", color="white")
     ax.tick_params(colors="white")
     return fig
-    # =========================================================
+# =========================================================
 # Feature 1: Explainable AI (XAI) – Erklärbare KI-Diagnose
 # =========================================================
 
@@ -2471,6 +2471,162 @@ with tab2:
         st.subheader("Confusion Matrix – Akustikmodell")
         cm_df = pd.DataFrame(acoustic_cm, index=CLASS_ORDER, columns=CLASS_ORDER)
         st.dataframe(cm_df, use_container_width=True)
+
+        st.markdown("---")
+
+        # ============================
+        # Feature 4: Uncertainty Quantification
+        # ============================
+        st.subheader("🎯 Modell-Unsicherheit (Uncertainty Quantification)")
+        st.caption(
+            "Misst, wie uneinig sich die 240 Entscheidungsbäume des Random "
+            "Forest sind – ein hohes Maß zeigt, dass die KI sich nicht sicher ist."
+        )
+
+        uncertainty_result = compute_prediction_uncertainty(acoustic_model, features_live)
+
+        col_u1, col_u2 = st.columns([1, 1.4])
+        with col_u1:
+            kpi_card(
+                "Unsicherheits-Index",
+                f"{uncertainty_result['uncertainty']*100:.1f}%",
+                uncertainty_result["zone"],
+                uncertainty_result["color"]
+            )
+        with col_u2:
+            st.plotly_chart(
+                plot_vote_distribution(
+                    uncertainty_result["vote_distribution"],
+                    uncertainty_result["color"]
+                ),
+                use_container_width=True
+            )
+
+        st.markdown("---")
+
+        # ============================
+        # Feature 2: Anomaly Detection
+        # ============================
+        st.subheader("🧬 Anomalie-Erkennung – Unbekannte Fehlermuster")
+        st.caption(
+            "Ein zweites, unüberwachtes KI-Modell (Isolation Forest) prüft, "
+            "ob das Geräusch überhaupt zu einem bekannten Betriebszustand passt – "
+            "auch neue, nie trainierte Fehlertypen können so erkannt werden."
+        )
+
+        anomaly_result = detect_anomaly(anomaly_detector, features_live)
+
+        col_an1, col_an2 = st.columns([1, 1.4])
+        with col_an1:
+            st.plotly_chart(plot_anomaly_gauge(anomaly_result), use_container_width=True)
+        with col_an2:
+            if anomaly_result["is_anomaly"]:
+                st.error(
+                    f"🚨 Ungewöhnliches Geräuschmuster erkannt! "
+                    f"(Anomalie-Score: {anomaly_result['anomaly_score']}) "
+                    f"Dies könnte ein neuer, noch nicht trainierter Fehlertyp sein – "
+                    f"manuelle Inspektion empfohlen."
+                )
+            else:
+                st.success(
+                    f"✅ Geräusch entspricht bekannten Mustern "
+                    f"(Normalität: {anomaly_result['normality_pct']}%)."
+                )
+
+        st.markdown("---")
+
+        # ============================
+        # Feature 1: Explainable AI
+        # ============================
+        st.subheader("🧠 Erklärbare KI – Warum diese Diagnose?")
+        st.caption(
+            "Lokale Erklärung: Welche akustischen Merkmale dieses spezifischen "
+            "Signals haben am meisten zur KI-Entscheidung beigetragen?"
+        )
+
+        contrib_df, explained_class, explained_conf = explain_single_prediction(
+            acoustic_model, features_live, top_n=6
+        )
+
+        st.plotly_chart(
+            plot_explanation_chart(contrib_df, explained_class),
+            use_container_width=True
+        )
+
+        with st.expander("📖 Detaillierte Merkmals-Erklärung"):
+            st.dataframe(
+                contrib_df[["Feature", "Erklärung", "Wert_im_Signal", "Impact"]],
+                use_container_width=True,
+                hide_index=True
+            )
+
+        with st.expander("🌍 Globale Feature Importance (gesamtes Modell)"):
+            global_imp = get_feature_importance_global(acoustic_model)
+            fig_global = px.bar(
+                global_imp.head(10),
+                x="Importance",
+                y="Feature",
+                orientation="h",
+                color="Importance",
+                color_continuous_scale="Viridis",
+                title="Top 10 wichtigste Merkmale – über alle Klassen"
+            )
+            fig_global.update_layout(
+                paper_bgcolor="#111827",
+                plot_bgcolor="#0f172a",
+                font=dict(color="white"),
+                height=350,
+                yaxis=dict(autorange="reversed")
+            )
+            st.plotly_chart(fig_global, use_container_width=True)
+            st.dataframe(
+                global_imp[["Feature", "Erklärung", "Importance"]].head(10),
+                use_container_width=True,
+                hide_index=True
+            )
+
+        st.markdown("---")
+
+        # ============================
+        # Feature 3: Human-in-the-Loop Feedback
+        # ============================
+        st.subheader("👨‍🔧 Techniker-Feedback & Modell-Verbesserung")
+        st.caption(
+            "Stimmt die KI-Diagnose nicht mit der Realität überein? Der Techniker "
+            "kann hier korrigieren – die Korrektur fließt ins nächste Training ein "
+            "(Human-in-the-loop Learning)."
+        )
+
+        col_fb1, col_fb2 = st.columns([1, 1])
+        with col_fb1:
+            st.info(f"🤖 KI-Diagnose: **{pred_live}** (Confidence {max(probas_live)*100:.1f}%)")
+            correct_state = st.selectbox(
+                "Tatsächlicher Zustand laut Techniker:",
+                CLASS_ORDER,
+                index=CLASS_ORDER.index(pred_live),
+                key="feedback_correct_state"
+            )
+
+            if st.button("✅ Korrektur speichern & Modell neu trainieren", key="submit_feedback"):
+                if correct_state != pred_live:
+                    add_feedback_correction(
+                        features_live, correct_state,
+                        selected["Stapler"], pred_live
+                    )
+                    st.success(
+                        f"Korrektur gespeichert: {pred_live} → {correct_state}. "
+                        f"Lade die Seite neu, um das verbesserte Modell zu nutzen."
+                    )
+                else:
+                    st.info("KI-Diagnose war bereits korrekt – keine Korrektur nötig.")
+
+        with col_fb2:
+            feedback_df = get_feedback_summary_df()
+            if not feedback_df.empty:
+                st.write(f"📚 Gesammelte Korrekturen: **{len(feedback_df)}**")
+                st.dataframe(feedback_df, use_container_width=True, hide_index=True)
+            else:
+                st.write("📚 Noch keine Techniker-Korrekturen gesammelt.")
 
 # =========================================================
 # Tab 3: Wartung & Planung
