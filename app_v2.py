@@ -647,6 +647,163 @@ def plot_vote_distribution(vote_df, color):
         showlegend=False
     )
     return fig
+    # =========================================================
+# Feature 5: Weibull-basierte RUL-Schätzung (Survival Analysis)
+# Ersetzt die einfache Punktschätzung der RUL durch ein
+# statistisch fundiertes Überlebensmodell (Industriestandard
+# der Zuverlässigkeitstechnik, z.B. Luftfahrt, Maschinenbau).
+# =========================================================
+
+def weibull_survival(t, eta, beta):
+    """
+    Überlebensfunktion R(t): Wahrscheinlichkeit, dass die
+    Komponente bis zum Zeitpunkt t NICHT ausfällt.
+    R(t) = exp(-(t/η)^β)
+    """
+    t = np.maximum(t, 1e-6)
+    return np.exp(-(t / eta) ** beta)
+
+
+def weibull_hazard(t, eta, beta):
+    """
+    Hazard-Rate h(t): momentane Ausfallrate zum Zeitpunkt t.
+    h(t) = (β/η) * (t/η)^(β-1)
+    """
+    t = np.maximum(t, 1e-6)
+    return (beta / eta) * (t / eta) ** (beta - 1)
+
+
+def map_rul_to_weibull_params(rul_estimate, severity_score, uncertainty):
+    """
+    Leitet Weibull-Parameter (η, β) aus den bestehenden
+    KI-Ergebnissen ab:
+
+    - η (Skala) ≈ RUL-Schätzung aus dem akustischen KI-Modell.
+      Bei t=η beträgt die Überlebenswahrscheinlichkeit immer
+      exakt 36.8% – eine bekannte Eigenschaft der Weibull-Verteilung.
+
+    - β (Form) steigt mit dem Schweregrad (SEVERITY) und der
+      Sicherheit der KI-Diagnose (1 - Uncertainty):
+        β ≈ 1.0  → konstante Ausfallrate (zufällige Fehler)
+        β > 1.0  → steigende Ausfallrate (kumulative Abnutzung,
+                   typisch für Motor-/Lagerverschleiß)
+      Je kritischer der Zustand UND je sicherer sich die KI ist,
+      desto steiler fällt die Überlebenskurve ab.
+    """
+    eta = max(0.5, float(rul_estimate))
+
+    base_beta = 1.0 + (severity_score / 3.0) * 1.8
+    confidence_factor = 1.0 - float(uncertainty)
+    beta = 1.0 + (base_beta - 1.0) * confidence_factor
+    beta = max(0.8, beta)
+
+    return eta, beta
+
+
+def compute_survival_curve(eta, beta, t_max_factor=2.5, n_points=200):
+    """
+    Berechnet die vollständige Überlebenskurve für die
+    Visualisierung sowie Risiko-Schwellen (90%, 50%, 10%
+    Überlebenswahrscheinlichkeit).
+    """
+    t_max = eta * t_max_factor
+    t_vals = np.linspace(0.01, t_max, n_points)
+    r_vals = weibull_survival(t_vals, eta, beta)
+    h_vals = weibull_hazard(t_vals, eta, beta)
+
+    thresholds = {}
+    for target in [0.90, 0.50, 0.10]:
+        idx = np.argmin(np.abs(r_vals - target))
+        thresholds[target] = round(float(t_vals[idx]), 1)
+
+    return {
+        "t": t_vals,
+        "survival": r_vals,
+        "hazard": h_vals,
+        "thresholds": thresholds
+    }
+
+
+def plot_weibull_survival_curve(curve_data, stapler_name, current_age=0):
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=curve_data["t"], y=curve_data["survival"] * 100,
+        mode="lines",
+        line=dict(color="#38bdf8", width=3),
+        name="Überlebenswahrscheinlichkeit R(t)",
+        fill="tozeroy",
+        fillcolor="rgba(56,189,248,0.1)"
+    ))
+
+    colors_thresh = {0.90: "#22c55e", 0.50: "#f59e0b", 0.10: "#ef4444"}
+    for prob, t_val in curve_data["thresholds"].items():
+        fig.add_vline(
+            x=t_val, line_dash="dash", line_color=colors_thresh[prob],
+            annotation_text=f"{int(prob*100)}%: {t_val}h",
+            annotation_font_color=colors_thresh[prob]
+        )
+
+    if current_age > 0:
+        fig.add_vline(
+            x=current_age, line_color="white", line_width=2,
+            annotation_text="Jetzt", annotation_font_color="white"
+        )
+
+    fig.update_layout(
+        title=f"Weibull-Überlebenskurve – {stapler_name}",
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=380,
+        xaxis=dict(title="Zeit [Stunden]", gridcolor="#334155"),
+        yaxis=dict(title="Überlebenswahrscheinlichkeit [%]", gridcolor="#334155", range=[0, 100]),
+        showlegend=False
+    )
+    return fig
+
+
+def plot_weibull_hazard_curve(curve_data, stapler_name):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=curve_data["t"], y=curve_data["hazard"],
+        mode="lines",
+        line=dict(color="#ef4444", width=2.5),
+        fill="tozeroy",
+        fillcolor="rgba(239,68,68,0.1)"
+    ))
+    fig.update_layout(
+        title=f"Ausfallrate h(t) über die Zeit – {stapler_name}",
+        paper_bgcolor="#111827",
+        plot_bgcolor="#0f172a",
+        font=dict(color="white"),
+        height=280,
+        xaxis=dict(title="Zeit [Stunden]", gridcolor="#334155"),
+        yaxis=dict(title="Momentane Ausfallrate", gridcolor="#334155")
+    )
+    return fig
+
+
+def get_weibull_recommendation(thresholds, beta):
+    """
+    Gibt eine handlungsorientierte Empfehlung basierend auf den
+    Risiko-Schwellen und der Form der Verteilung zurück.
+    """
+    t90, t50, t10 = thresholds[0.90], thresholds[0.50], thresholds[0.10]
+
+    if beta > 1.8:
+        wear_type = "Stark kumulative Abnutzung (z.B. Lagerverschleiß) – Risiko steigt schnell mit der Zeit."
+    elif beta > 1.2:
+        wear_type = "Moderate kumulative Abnutzung – Risiko steigt allmählich."
+    else:
+        wear_type = "Nahezu zufällige Ausfallrate – Zeitpunkt schwer vorhersagbar."
+
+    return {
+        "wear_type": wear_type,
+        "safe_until": t90,
+        "critical_at": t50,
+        "danger_at": t10
+    }
 # =========================================================
 # Factory Info – LogisTech GmbH
 # =========================================================
@@ -2301,16 +2458,85 @@ with tab2:
             opacity=0.5
         )
 
-    fig_komp.update_layout(
-        paper_bgcolor="#111827",
-        plot_bgcolor="#0f172a",
-        font=dict(color="white"),
-        height=350
+    # ============================
+    # Feature 5: Weibull Survival Analysis (RUL)
+    # ============================
+    st.subheader("📉 Statistische Zuverlässigkeitsanalyse (Weibull-Modell)")
+    st.caption(
+        "Industriestandard der Zuverlässigkeitstechnik: statt einer einzelnen "
+        "RUL-Zahl wird die vollständige Ausfallwahrscheinlichkeit über die Zeit "
+        "berechnet – inklusive Risiko-Schwellen (90% / 50% / 10% Überlebenswahrscheinlichkeit)."
     )
-    st.plotly_chart(fig_komp, use_container_width=True)
-    st.dataframe(komp_df, use_container_width=True, hide_index=True)
+
+    weibull_uncertainty_proxy = round(1.0 - selected["Confidence"], 3)
+    weibull_eta, weibull_beta = map_rul_to_weibull_params(
+        selected["RUL_min_h"],
+        SEVERITY[selected["KI_Zustand"]],
+        weibull_uncertainty_proxy
+    )
+
+    weibull_curve = compute_survival_curve(weibull_eta, weibull_beta)
+    weibull_rec = get_weibull_recommendation(weibull_curve["thresholds"], weibull_beta)
+
+    col_w1, col_w2, col_w3 = st.columns(3)
+    with col_w1:
+        kpi_card(
+            "✅ Sicher bis",
+            f"{weibull_rec['safe_until']} h",
+            "90% Überlebenswahrscheinlichkeit",
+            "#22c55e"
+        )
+    with col_w2:
+        kpi_card(
+            "⚠️ Kritisch bei",
+            f"{weibull_rec['critical_at']} h",
+            "50% Überlebenswahrscheinlichkeit",
+            "#f59e0b"
+        )
+    with col_w3:
+        kpi_card(
+            "🚨 Gefahr bei",
+            f"{weibull_rec['danger_at']} h",
+            "10% Überlebenswahrscheinlichkeit",
+            "#ef4444"
+        )
+
+    st.info(f"📊 Verschleißmuster: {weibull_rec['wear_type']} (Weibull β = {weibull_beta:.2f})")
+
+    col_wc1, col_wc2 = st.columns(2)
+    with col_wc1:
+        st.plotly_chart(
+            plot_weibull_survival_curve(weibull_curve, selected["Stapler"]),
+            use_container_width=True
+        )
+    with col_wc2:
+        st.plotly_chart(
+            plot_weibull_hazard_curve(weibull_curve, selected["Stapler"]),
+            use_container_width=True
+        )
+
+    with st.expander("📖 Was bedeutet das Weibull-Modell?"):
+        st.markdown(f"""
+        Die **Weibull-Verteilung** ist der Industriestandard zur Modellierung
+        von Ausfallzeiten (Luftfahrt, Automobilbau, Maschinenbau).
+
+        - **η (Skalenparameter) = {weibull_eta:.1f}h**: abgeleitet aus der
+          akustischen RUL-Schätzung der KI.
+        - **β (Formparameter) = {weibull_beta:.2f}**: kombiniert den
+          Schweregrad des KI-Zustands ({selected['KI_Zustand']}) mit der
+          Modellsicherheit. β > 1 bedeutet zunehmende Ausfallrate
+          (kumulativer Verschleiß) – typisch für Motoren und Lager.
+
+        Im Gegensatz zur einfachen RUL-Punktschätzung liefert dieses Modell
+        eine **vollständige Risikoeinschätzung über die Zeit**, die dem
+        Techniker erlaubt, den Wartungszeitpunkt flexibel nach eigenem
+        Risikomanagement zu wählen (z.B. "warten bis 90%-Schwelle" für
+        unkritische Stapler, "sofort bei 50%-Schwelle" für Hochrisikobereiche).
+        """)
 
     st.markdown("---")
+
+    # Wartungsinfo
 
     # Wartungsinfo
     left, right = st.columns([1, 1])
