@@ -3721,15 +3721,15 @@ ANTWORTREGELN
                             }
                         ],
                         "generationConfig": {
-                            "temperature": 0.7,
-                            "maxOutputTokens": 1000
+                            "temperature": 0.3,
+                            "maxOutputTokens": 3072
                         }
                     }
 
                     response = requests.post(
                         url,
                         json=payload,
-                        timeout=15
+                        timeout=45
                     )
 
                     if response.status_code == 200:
