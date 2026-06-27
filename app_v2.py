@@ -312,9 +312,6 @@ def github_get_file(path, token, repo):
 
 
 def github_put_file(path, content_bytes, message, token, repo, sha=None):
-    """
-    Lädt eine Datei ins GitHub-Repo hoch (neu oder aktualisiert).
-    """
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
     headers = {"Authorization": f"token {token}"}
 
@@ -326,6 +323,10 @@ def github_put_file(path, content_bytes, message, token, repo, sha=None):
         payload["sha"] = sha
 
     response = requests.put(url, headers=headers, json=payload, timeout=30)
+
+    if response.status_code not in [200, 201]:
+        st.error(f"GitHub Fehler {response.status_code}: {response.text[:500]}")
+
     return response.status_code in [200, 201]
 
 
