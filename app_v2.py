@@ -276,6 +276,134 @@ def plot_audio_mel(y, sr=SR):
     ax.tick_params(colors="white")
     return fig
 # =========================================================
+# GitHub-basierte permanente Datenbank-Speicherung
+# Speichert bestätigte Audioaufnahmen + Übersichtstabelle
+# dauerhaft in einem GitHub-Repository (kostenlos, persistent).
+# =========================================================
+
+import base64
+import json
+import requests
+import pandas as pd
+import io
+
+
+def get_github_config():
+    """Liest GitHub-Zugangsdaten aus den Streamlit Secrets."""
+    token = st.secrets.get("GITHUB_TOKEN", "")
+    repo = st.secrets.get("GITHUB_REPO", "")
+    return token, repo
+
+
+def github_get_file(path, token, repo):
+    """
+    Holt eine Datei aus dem GitHub-Repo. Gibt (content_bytes, sha)
+    zurück, oder (None, None) falls die Datei noch nicht existiert.
+    """
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}"}
+    response = requests.get(url, headers=headers, timeout=15)
+
+    if response.status_code == 200:
+        data = response.json()
+        content = base64.b64decode(data["content"])
+        return content, data["sha"]
+    return None, None
+
+
+def github_put_file(path, content_bytes, message, token, repo, sha=None):
+    """
+    Lädt eine Datei ins GitHub-Repo hoch (neu oder aktualisiert).
+    """
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}"}
+
+    payload = {
+        "message": message,
+        "content": base64.b64encode(content_bytes).decode("utf-8")
+    }
+    if sha:
+        payload["sha"] = sha
+
+    response = requests.put(url, headers=headers, json=payload, timeout=30)
+    return response.status_code in [200, 201]
+
+
+def get_overview_table(token, repo):
+    """
+    Lädt die zentrale Übersichtstabelle (Datenbank_Uebersicht.xlsx)
+    aus GitHub. Falls sie noch nicht existiert, wird eine leere
+    Tabelle mit der richtigen Struktur zurückgegeben.
+    """
+    content, sha = github_get_file("Datenbank_Uebersicht.xlsx", token, repo)
+
+    if content is not None:
+        df = pd.read_excel(io.BytesIO(content))
+    else:
+        df = pd.DataFrame(columns=[
+            "Dateiname", "Klasse_bestaetigt", "Klasse_KI_Vorschlag",
+            "KI_Confidence", "Quelle", "Zeitpunkt", "Bestaetigt_von"
+        ])
+
+    return df, sha
+
+
+def save_confirmed_recording_to_database(
+    audio_bytes, filename, confirmed_class, ki_suggestion,
+    ki_confidence, source_type, confirmed_by="Techniker"
+):
+    """
+    Speichert eine VOM MENSCHEN BESTÄTIGTE Audioaufnahme dauerhaft
+    in der GitHub-Datenbank:
+    1) Die Audiodatei selbst (im passenden Klassen-Ordner)
+    2) Ein neuer Eintrag in der zentralen Übersichtstabelle
+
+    WICHTIG: Diese Funktion wird erst aufgerufen, NACHDEM ein
+    Mensch den KI-Vorschlag bestätigt oder korrigiert hat – so
+    wird ein "Confirmation Bias Loop" (das Modell trainiert sich
+    selbst auf seinen eigenen Fehlern) vermieden.
+    """
+    token, repo = get_github_config()
+    if not token or not repo:
+        return False, "GitHub-Zugangsdaten fehlen in den Streamlit Secrets."
+
+    audio_path = f"Datenbank_Gabelstapler_Audio/{confirmed_class}/{filename}"
+
+    ok_audio = github_put_file(
+        audio_path, audio_bytes,
+        f"Neue Aufnahme hinzugefügt: {filename} ({confirmed_class})",
+        token, repo
+    )
+    if not ok_audio:
+        return False, "Fehler beim Hochladen der Audiodatei."
+
+    overview_df, sha = get_overview_table(token, repo)
+
+    new_row = {
+        "Dateiname": filename,
+        "Klasse_bestaetigt": confirmed_class,
+        "Klasse_KI_Vorschlag": ki_suggestion,
+        "KI_Confidence": round(float(ki_confidence), 3),
+        "Quelle": source_type,
+        "Zeitpunkt": pd.Timestamp.now().strftime("%d.%m.%Y %H:%M:%S"),
+        "Bestaetigt_von": confirmed_by
+    }
+    overview_df = pd.concat([overview_df, pd.DataFrame([new_row])], ignore_index=True)
+
+    buffer = io.BytesIO()
+    overview_df.to_excel(buffer, index=False)
+    buffer.seek(0)
+
+    ok_table = github_put_file(
+        "Datenbank_Uebersicht.xlsx", buffer.getvalue(),
+        f"Übersicht aktualisiert: +{filename}",
+        token, repo, sha=sha
+    )
+    if not ok_table:
+        return False, "Audiodatei gespeichert, aber Übersichtstabelle konnte nicht aktualisiert werden."
+
+    return True, f"Erfolgreich gespeichert als '{confirmed_class}' in der Datenbank."
+# =========================================================
 # Feature 1: Explainable AI (XAI) – Erklärbare KI-Diagnose
 # =========================================================
 
@@ -2667,6 +2795,7 @@ with tab2:
             st.pyplot(plot_audio_spectrum(analysis_audio))
         with col_a2:
             st.pyplot(plot_audio_mel(analysis_audio))
+            
 
             features_live = extract_audio_features(analysis_audio).reshape(1, -1)
             probas_live = acoustic_model.predict_proba(features_live)[0]
