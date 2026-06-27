@@ -2830,7 +2830,6 @@ with tab2:
         st.dataframe(cm_df, use_container_width=True)
 
         st.markdown("---")
-    cat > /home/claude/github_db/tab2_recording_ui.py << 'PYEOF'
     # ============================
     # Datenbank-Aufbau: Aufnahme + KI-Vorschlag + menschliche Bestätigung
     # ============================
