@@ -2830,6 +2830,104 @@ with tab2:
         st.dataframe(cm_df, use_container_width=True)
 
         st.markdown("---")
+        cat > /home/claude/github_db/tab2_recording_ui.py << 'PYEOF'
+    # ============================
+    # Datenbank-Aufbau: Aufnahme + KI-Vorschlag + menschliche Bestätigung
+    # ============================
+    st.markdown("---")
+    st.subheader("🗄️ Datenbank-Aufbau – Neue Aufnahme hinzufügen")
+    st.caption(
+        "Nimm einen echten Motorklang auf oder lade eine eigene Datei hoch. "
+        "Die KI schlägt eine Klasse vor – BESTÄTIGE oder KORRIGIERE sie, "
+        "bevor sie dauerhaft in der Datenbank gespeichert wird. So vermeiden "
+        "wir, dass das Modell sich auf seinen eigenen Fehlern selbst trainiert."
+    )
+
+    db_source = st.radio(
+        "Neue Aufnahme über:",
+        ["🎙️ Live-Mikrofonaufnahme", "📁 Eigene Audiodatei hochladen"],
+        horizontal=True,
+        key="db_audio_source"
+    )
+
+    new_recording_bytes = None
+    new_recording_array = None
+
+    if db_source == "🎙️ Live-Mikrofonaufnahme":
+        mic_input = st.audio_input("Motorgeräusch aufnehmen (mind. 10s)", key="db_mic_input")
+        if mic_input is not None:
+            new_recording_bytes = mic_input.getvalue()
+            raw, _ = librosa.load(mic_input, sr=SR)
+            target_len = int(SR * DURATION)
+            if len(raw) < target_len:
+                new_recording_array = np.pad(raw, (0, target_len - len(raw)), mode="wrap")
+            else:
+                new_recording_array = raw[:target_len]
+    else:
+        db_upload = st.file_uploader(
+            "Audiodatei hochladen (.wav, .mp3)",
+            type=["wav", "mp3"],
+            key="db_file_upload"
+        )
+        if db_upload is not None:
+            new_recording_bytes = db_upload.getvalue()
+            raw, _ = librosa.load(db_upload, sr=SR)
+            target_len = int(SR * DURATION)
+            if len(raw) < target_len:
+                new_recording_array = np.pad(raw, (0, target_len - len(raw)), mode="wrap")
+            else:
+                new_recording_array = raw[:target_len]
+
+    if new_recording_array is not None:
+        st.audio(audio_to_wav_bytes(new_recording_array), format="audio/wav")
+
+        db_features = extract_audio_features(new_recording_array).reshape(1, -1)
+        db_probas = acoustic_model.predict_proba(db_features)[0]
+        db_suggestion = acoustic_model.classes_[np.argmax(db_probas)]
+        db_confidence = float(np.max(db_probas))
+
+        st.info(
+            f"🤖 *KI-Vorschlag:* {db_suggestion} "
+            f"(Confidence: {db_confidence*100:.1f}%)"
+        )
+
+        col_db1, col_db2 = st.columns([1, 1])
+        with col_db1:
+            confirmed_class = st.selectbox(
+                "✅ Tatsächliche Klasse bestätigen oder korrigieren:",
+                CLASS_ORDER,
+                index=CLASS_ORDER.index(db_suggestion),
+                key="db_confirm_class"
+            )
+            confirmed_by_name = st.text_input(
+                "Bestätigt von (Name):", value="Techniker", key="db_confirmer_name"
+            )
+
+        with col_db2:
+            st.write("")
+            st.write("")
+            if st.button("💾 In Datenbank speichern", key="db_save_button", type="primary"):
+                timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                source_label = "Mikrofon-Live" if db_source.startswith("🎙️") else "Datei-Upload"
+                new_filename = f"{confirmed_class.lower()}{source_label.lower()}{timestamp_str}.wav"
+
+                wav_bytes = audio_to_wav_bytes(new_recording_array)
+
+                with st.spinner("Speichere dauerhaft in der GitHub-Datenbank..."):
+                    success, message = save_confirmed_recording_to_database(
+                        audio_bytes=wav_bytes,
+                        filename=new_filename,
+                        confirmed_class=confirmed_class,
+                        ki_suggestion=db_suggestion,
+                        ki_confidence=db_confidence,
+                        source_type=source_label,
+                        confirmed_by=confirmed_by_name
+                    )
+
+                if success:
+                    st.success(f"✅ {message}")
+                else:
+                    st.error(f"❌ {message}")
 
         # ============================
         # Feature 4: Uncertainty Quantification
