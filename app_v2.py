@@ -2938,18 +2938,28 @@ with tab2:
                 new_recording_array = raw[:target_len]
     else:
         db_upload = st.file_uploader(
-            "Audiodatei hochladen (.wav, .mp3)",
-            type=["wav", "mp3"],
+            "Audio- oder Videodatei hochladen (.wav, .mp3, .mp4, .mov, .m4a)",
+            type=["wav", "mp3", "mp4", "mov", "avi", "mkv", "m4a"],
             key="db_file_upload"
         )
         if db_upload is not None:
-            new_recording_bytes = db_upload.getvalue()
-            raw, _ = librosa.load(db_upload, sr=SR)
-            target_len = int(SR * DURATION)
-            if len(raw) < target_len:
-                new_recording_array = np.pad(raw, (0, target_len - len(raw)), mode="wrap")
+            file_ext = os.path.splitext(db_upload.name)[1].lower()
+
+            if file_ext in [".wav", ".mp3"]:
+                new_recording_bytes = db_upload.getvalue()
+                raw, _ = librosa.load(db_upload, sr=SR)
+                new_recording_array = standardize_audio_length(raw)
             else:
-                new_recording_array = raw[:target_len]
+                with st.spinner("🎬 Extrahiere Audio aus Video..."):
+                    raw_audio, error_msg = extract_audio_from_video(db_upload)
+
+                if error_msg:
+                    st.error(f"❌ {error_msg}")
+                    new_recording_array = None
+                else:
+                    new_recording_array = standardize_audio_length(raw_audio)
+                    new_recording_bytes = audio_to_wav_bytes(new_recording_array)
+                    st.success("✅ Audio erfolgreich aus Video extrahiert!")
 
     if new_recording_array is not None:
         st.audio(audio_to_wav_bytes(new_recording_array), format="audio/wav")
