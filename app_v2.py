@@ -275,6 +275,79 @@ def plot_audio_mel(y, sr=SR):
     ax.set_ylabel("Mel-Bänder", color="white")
     ax.tick_params(colors="white")
     return fig
+    # =========================================================
+# Feature: Video-zu-Audio Extraktion für Datenbank-Aufbau
+# Erlaubt das Hochladen von Video-Dateien (.mp4, .mov, .avi,
+# .m4a), aus denen automatisch der Ton extrahiert wird –
+# damit auch Video-Aufnahmen (z.B. mit dem Smartphone gefilmt)
+# für die Datenbank nutzbar werden.
+# =========================================================
+
+import tempfile
+import os
+
+VIDEO_EXTENSIONS = (".mp4", ".mov", ".avi", ".mkv")
+AUDIO_ONLY_EXTENSIONS = (".m4a",)
+
+
+def extract_audio_from_video(uploaded_file, target_sr=SR):
+    """
+    Nimmt eine hochgeladene Video- oder .m4a-Datei (Streamlit
+    UploadedFile-Objekt) und extrahiert daraus die Audiospur
+    als numpy-Array, kompatibel mit extract_audio_features().
+
+    Gibt (audio_array, fehler_nachricht) zurück. Bei Erfolg ist
+    fehler_nachricht None.
+    """
+    suffix = os.path.splitext(uploaded_file.name)[1].lower()
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_in:
+        tmp_in.write(uploaded_file.getvalue())
+        tmp_in_path = tmp_in.name
+
+    tmp_out_path = tmp_in_path + "_audio.wav"
+
+    try:
+        if suffix in AUDIO_ONLY_EXTENSIONS:
+            # .m4a ist bereits eine Audiodatei -> direkt mit librosa lesbar
+            audio, _ = librosa.load(tmp_in_path, sr=target_sr)
+
+        elif suffix in VIDEO_EXTENSIONS:
+            from moviepy.video.io.VideoFileClip import VideoFileClip
+
+            video = VideoFileClip(tmp_in_path)
+            if video.audio is None:
+                return None, "Diese Videodatei enthält keine Audiospur."
+
+            video.audio.write_audiofile(tmp_out_path, fps=target_sr, logger=None)
+            video.close()
+
+            audio, _ = librosa.load(tmp_out_path, sr=target_sr)
+
+        else:
+            return None, f"Dateityp '{suffix}' wird nicht unterstützt."
+
+        return audio, None
+
+    except Exception as e:
+        return None, f"Fehler bei der Audio-Extraktion: {str(e)}"
+
+    finally:
+        for path in [tmp_in_path, tmp_out_path]:
+            if os.path.exists(path):
+                os.remove(path)
+
+
+def standardize_audio_length(audio, sr=SR, duration=DURATION):
+    """
+    Bringt ein Audiosignal auf die einheitliche Ziellänge
+    (Padding bei zu kurzen, Schneiden bei zu langen Aufnahmen) –
+    gleiche Logik wie bei Mikrofon-/Datei-Uploads im System.
+    """
+    target_len = int(sr * duration)
+    if len(audio) < target_len:
+        return np.pad(audio, (0, target_len - len(audio)), mode="wrap")
+    return audio[:target_len]
 # =========================================================
 # GitHub-basierte permanente Datenbank-Speicherung
 # Speichert bestätigte Audioaufnahmen + Übersichtstabelle
