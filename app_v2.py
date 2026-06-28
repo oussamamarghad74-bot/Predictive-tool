@@ -2176,8 +2176,8 @@ st.sidebar.caption(
 init_feedback_store()
 
 with st.spinner("🤖 KI trainiert Akustikmodell und analysiert Flotte..."):
-    acoustic_model, acoustic_accuracy, acoustic_cm = train_acoustic_model()
-    anomaly_detector = train_anomaly_detector()
+    acoustic_model, acoustic_accuracy, acoustic_cm, acoustic_training_info = train_acoustic_model()
+    anomaly_detector, anomaly_baseline_info = train_anomaly_detector()
 
     if len(st.session_state.feedback_corrections) > 0:
         acoustic_model, n_corrections = retrain_with_feedback(acoustic_model)
@@ -2979,7 +2979,12 @@ with tab2:
             kpi_card("Confidence", f"{max(probas_live)*100:.1f}%", "Modellsicherheit", "#38bdf8")
         with col_k3:
             kpi_card("Modell-Genauigkeit", f"{acoustic_accuracy*100:.1f}%", "Random Forest – Testdaten", "#a855f7")
-
+        real_counts_str = ", ".join([f"{k}: {v}" for k, v in acoustic_training_info["real_counts"].items()])
+        st.caption(
+        f"📊 Trainingsdaten: {acoustic_training_info['n_total']} Samples gesamt "
+        f"(echte Datenbank-Aufnahmen — {real_counts_str} — jeweils 3-fach gewichtet, "
+        f"plus {acoustic_training_info['n_synthetic_per_class']} synthetische pro Klasse)"
+            )
         st.subheader("Confusion Matrix – Akustikmodell")
         cm_df = pd.DataFrame(acoustic_cm, index=CLASS_ORDER, columns=CLASS_ORDER)
         st.dataframe(cm_df, use_container_width=True)
