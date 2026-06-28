@@ -601,7 +601,7 @@ def explain_single_prediction(model, features, top_n=5):
     baseline_confidence = baseline_proba[predicted_class_idx]
 
     contributions = []
-    X_train_ref, _ = create_acoustic_training_dataset()
+    X_train_ref, _, _ = create_acoustic_training_dataset_v2()
     global_means = np.mean(X_train_ref, axis=0)
 
     for i in range(features.shape[1]):
@@ -787,7 +787,7 @@ def retrain_with_feedback(base_model):
     neu trainiert. Dies demonstriert Human-in-the-loop Learning –
     die KI verbessert sich durch Experten-Feedback aus der Praxis.
     """
-    X_base, y_base = create_acoustic_training_dataset()
+    X_base, y_base, _ = create_acoustic_training_dataset_v2()
 
     if len(st.session_state.feedback_corrections) == 0:
         return base_model, 0
