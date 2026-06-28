@@ -176,10 +176,6 @@ def audio_to_wav_bytes(y, sr=SR):
     sf.write(buffer, y, sr, format="WAV")
     return buffer.getvalue()
 
-# =========================================================
-# STUFE: Echte Datenbank-Aufnahmen in BEIDE Modelle einbinden
-# (Random Forest Hauptmodell + Isolation Forest Anomaly Detector)
-# =========================================================
 
 def load_real_recordings_by_class_from_github(min_per_class=20):
     """
@@ -218,7 +214,6 @@ def load_real_recordings_by_class_from_github(min_per_class=20):
 
     counts = {c: len(real_features_by_class[c]) for c in CLASS_ORDER}
     return real_features_by_class, counts
-
 
 @st.cache_data
 def create_acoustic_training_dataset_v2(n_synthetic_per_class=70):
@@ -297,8 +292,6 @@ def train_acoustic_model():
     cm = confusion_matrix(y_test, y_pred, labels=CLASS_ORDER)
 
     return model, acc, cm, training_info
-
-
 
 def plot_audio_waveform(y, sr=SR):
     fig, ax = plt.subplots(figsize=(9, 2.4))
