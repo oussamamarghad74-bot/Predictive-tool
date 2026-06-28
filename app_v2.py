@@ -2813,10 +2813,13 @@ with tab2:
 
     audio_source = st.radio(
         "Audioquelle wählen",
-        ["🔊 Simuliertes Motorgeräusch", "📁 Eigene Audiodatei hochladen", "🎙️ Live-Mikrofonaufnahme"],
+        ["🔊 Simuliertes Motorgeräusch", "📁 Eigene Audio-/Videodatei hochladen", "🎙️ Live-Mikrofonaufnahme"],
         horizontal=True,
         key="audio_source_t2"
     )
+
+    analysis_audio = None
+    audio_source_label = ""
 
     if audio_source == "🔊 Simuliertes Motorgeräusch":
         live_seed = int(time.time() / 5)
@@ -2828,35 +2831,49 @@ with tab2:
             factory_noise=global_noise,
             seed=live_seed
         )
+        audio_source_label = "Simuliert"
         st.caption(f"Simuliertes Motorgeräusch für {selected['Stapler']} – Zustand: {selected['Ist_Zustand']}")
-    elif audio_source == "📁 Eigene Audiodatei hochladen":
+
+    elif audio_source == "📁 Eigene Audio-/Videodatei hochladen":
         uploaded_audio = st.file_uploader(
-            "Audiodatei hochladen (.wav, .mp3)",
-            type=["wav", "mp3"],
+            "Audio- oder Videodatei hochladen (.wav, .mp3, .mp4, .mov, .m4a)",
+            type=["wav", "mp3", "mp4", "mov", "avi", "mkv", "m4a"],
             key="audio_upload_t2"
         )
         if uploaded_audio is not None:
-            analysis_audio, _ = librosa.load(uploaded_audio, sr=SR, duration=DURATION)
-            st.caption(f"Hochgeladene Datei: {uploaded_audio.name}")
+            file_ext = os.path.splitext(uploaded_audio.name)[1].lower()
+
+            if file_ext in [".wav", ".mp3"]:
+                raw_audio, _ = librosa.load(uploaded_audio, sr=SR)
+                analysis_audio = standardize_audio_length(raw_audio)
+                audio_source_label = "Datei-Upload"
+                st.caption(f"Hochgeladene Datei: {uploaded_audio.name}")
+            else:
+                with st.spinner("🎬 Extrahiere Audio aus Video..."):
+                    raw_audio, error_msg = extract_audio_from_video(uploaded_audio)
+                if error_msg:
+                    st.error(f"❌ {error_msg}")
+                else:
+                    analysis_audio = standardize_audio_length(raw_audio)
+                    audio_source_label = "Video-Upload"
+                    st.success(f"✅ Audio aus '{uploaded_audio.name}' extrahiert!")
         else:
-            st.info("Bitte eine Audiodatei hochladen, um die KI-Diagnose zu starten.")
-            analysis_audio = None
+            st.info("Bitte eine Audio- oder Videodatei hochladen, um die KI-Diagnose zu starten.")
+
     else:  # 🎙️ Live-Mikrofonaufnahme
         st.info("🎙️ Halte dein Smartphone mind. 10 Sekunden in der Nähe des Gabelstapler-Motors.")
         mic_recording = st.audio_input("Motorgeräusch aufnehmen (mind. 10s)", key="mic_input_t2")
         if mic_recording is not None:
             raw_audio, _ = librosa.load(mic_recording, sr=SR)
-            if len(raw_audio) < SR * DURATION:
-                pad_width = int(SR * DURATION) - len(raw_audio)
-                analysis_audio = np.pad(raw_audio, (0, pad_width), mode="wrap")
-                st.caption(f"🎙️ Aufnahme war kürzer als {DURATION}s – auf {DURATION}s ergänzt (wiederholt).")
-            else:
-                analysis_audio = raw_audio[:int(SR * DURATION)]
-                st.caption(f"🎙️ Live-Aufnahme erfolgreich erfasst ({len(raw_audio)/SR:.1f}s, erste {DURATION}s analysiert).")
+            analysis_audio = standardize_audio_length(raw_audio)
+            audio_source_label = "Mikrofon-Live"
+            st.caption(f"🎙️ Live-Aufnahme erfolgreich erfasst ({len(raw_audio)/SR:.1f}s Original).")
         else:
             st.info("Bitte eine Aufnahme starten, um die KI-Diagnose zu starten.")
-            analysis_audio = None
 
+    # ============================
+    # Ab hier: EINE gemeinsame Analyse für alle drei Quellen
+    # ============================
     if analysis_audio is not None:
         st.audio(audio_to_wav_bytes(analysis_audio), format="audio/wav")
 
@@ -2869,7 +2886,6 @@ with tab2:
             st.pyplot(plot_audio_spectrum(analysis_audio))
         with col_a2:
             st.pyplot(plot_audio_mel(analysis_audio))
-            
 
             features_live = extract_audio_features(analysis_audio).reshape(1, -1)
             probas_live = acoustic_model.predict_proba(features_live)[0]
@@ -2904,113 +2920,6 @@ with tab2:
         st.dataframe(cm_df, use_container_width=True)
 
         st.markdown("---")
-    # ============================
-    # Datenbank-Aufbau: Aufnahme + KI-Vorschlag + menschliche Bestätigung
-    # ============================
-    st.markdown("---")
-    st.subheader("🗄️ Datenbank-Aufbau – Neue Aufnahme hinzufügen")
-    st.caption(
-        "Nimm einen echten Motorklang auf oder lade eine eigene Datei hoch. "
-        "Die KI schlägt eine Klasse vor – BESTÄTIGE oder KORRIGIERE sie, "
-        "bevor sie dauerhaft in der Datenbank gespeichert wird. So vermeiden "
-        "wir, dass das Modell sich auf seinen eigenen Fehlern selbst trainiert."
-    )
-
-    db_source = st.radio(
-        "Neue Aufnahme über:",
-        ["🎙️ Live-Mikrofonaufnahme", "📁 Eigene Audiodatei hochladen"],
-        horizontal=True,
-        key="db_audio_source"
-    )
-
-    new_recording_bytes = None
-    new_recording_array = None
-
-    if db_source == "🎙️ Live-Mikrofonaufnahme":
-        mic_input = st.audio_input("Motorgeräusch aufnehmen (mind. 10s)", key="db_mic_input")
-        if mic_input is not None:
-            new_recording_bytes = mic_input.getvalue()
-            raw, _ = librosa.load(mic_input, sr=SR)
-            target_len = int(SR * DURATION)
-            if len(raw) < target_len:
-                new_recording_array = np.pad(raw, (0, target_len - len(raw)), mode="wrap")
-            else:
-                new_recording_array = raw[:target_len]
-    else:
-        db_upload = st.file_uploader(
-            "Audio- oder Videodatei hochladen (.wav, .mp3, .mp4, .mov, .m4a)",
-            type=["wav", "mp3", "mp4", "mov", "avi", "mkv", "m4a"],
-            key="db_file_upload"
-        )
-        if db_upload is not None:
-            file_ext = os.path.splitext(db_upload.name)[1].lower()
-
-            if file_ext in [".wav", ".mp3"]:
-                new_recording_bytes = db_upload.getvalue()
-                raw, _ = librosa.load(db_upload, sr=SR)
-                new_recording_array = standardize_audio_length(raw)
-            else:
-                with st.spinner("🎬 Extrahiere Audio aus Video..."):
-                    raw_audio, error_msg = extract_audio_from_video(db_upload)
-
-                if error_msg:
-                    st.error(f"❌ {error_msg}")
-                    new_recording_array = None
-                else:
-                    new_recording_array = standardize_audio_length(raw_audio)
-                    new_recording_bytes = audio_to_wav_bytes(new_recording_array)
-                    st.success("✅ Audio erfolgreich aus Video extrahiert!")
-
-    if new_recording_array is not None:
-        st.audio(audio_to_wav_bytes(new_recording_array), format="audio/wav")
-
-        db_features = extract_audio_features(new_recording_array).reshape(1, -1)
-        db_probas = acoustic_model.predict_proba(db_features)[0]
-        db_suggestion = acoustic_model.classes_[np.argmax(db_probas)]
-        db_confidence = float(np.max(db_probas))
-
-        st.info(
-            f"🤖 *KI-Vorschlag:* {db_suggestion} "
-            f"(Confidence: {db_confidence*100:.1f}%)"
-        )
-
-        col_db1, col_db2 = st.columns([1, 1])
-        with col_db1:
-            confirmed_class = st.selectbox(
-                "✅ Tatsächliche Klasse bestätigen oder korrigieren:",
-                CLASS_ORDER,
-                index=CLASS_ORDER.index(db_suggestion),
-                key="db_confirm_class"
-            )
-            confirmed_by_name = st.text_input(
-                "Bestätigt von (Name):", value="Techniker", key="db_confirmer_name"
-            )
-
-        with col_db2:
-            st.write("")
-            st.write("")
-            if st.button("💾 In Datenbank speichern", key="db_save_button", type="primary"):
-                timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-                source_label = "Mikrofon-Live" if db_source.startswith("🎙️") else "Datei-Upload"
-                new_filename = f"{confirmed_class.lower()}{source_label.lower()}{timestamp_str}.wav"
-
-                wav_bytes = audio_to_wav_bytes(new_recording_array)
-
-                with st.spinner("Speichere dauerhaft in der GitHub-Datenbank..."):
-                    success, message = save_confirmed_recording_to_database(
-                        audio_bytes=wav_bytes,
-                        filename=new_filename,
-                        confirmed_class=confirmed_class,
-                        ki_suggestion=db_suggestion,
-                        ki_confidence=db_confidence,
-                        source_type=source_label,
-                        confirmed_by=confirmed_by_name
-                    )
-
-                if success:
-                    st.success(f"✅ {message}")
-                else:
-                    st.error(f"❌ {message}")
 
         # ============================
         # Feature 4: Uncertainty Quantification
@@ -3126,12 +3035,12 @@ with tab2:
         st.markdown("---")
 
         # ============================
-        # Feature 3: Human-in-the-Loop Feedback
+        # Feature 3: Human-in-the-Loop Feedback (schnelle Korrektur, ohne Speicherung)
         # ============================
         st.subheader("👨‍🔧 Techniker-Feedback & Modell-Verbesserung")
         st.caption(
-            "Stimmt die KI-Diagnose nicht mit der Realität überein? Der Techniker "
-            "kann hier korrigieren – die Korrektur fließt ins nächste Training ein "
+            "Stimmt die KI-Diagnose nicht mit der Realität überein? Korrigiere "
+            "sie hier kurz – das fließt ins nächste Modell-Retraining ein "
             "(Human-in-the-loop Learning)."
         )
 
@@ -3165,6 +3074,63 @@ with tab2:
                 st.dataframe(feedback_df, use_container_width=True, hide_index=True)
             else:
                 st.write("📚 Noch keine Techniker-Korrekturen gesammelt.")
+
+        st.markdown("---")
+
+        # ============================
+        # Datenbank-Aufbau: DIESELBE Aufnahme dauerhaft speichern
+        # ============================
+        st.subheader("🗄️ Diese Aufnahme dauerhaft in der Datenbank speichern")
+        st.caption(
+            "Bestätige oder korrigiere die KI-Diagnose oben, bevor diese "
+            "GENAU GEHÖRTE Aufnahme dauerhaft in der GitHub-Datenbank "
+            "gespeichert wird. So vermeiden wir, dass das Modell sich auf "
+            "seinen eigenen Fehlern selbst trainiert."
+        )
+
+        if audio_source_label == "Simuliert":
+            st.warning(
+                "⚠️ Simulierte Audiodaten sind synthetisch und sollten nicht "
+                "als 'echte' Aufnahme in der Datenbank gespeichert werden. "
+                "Wähle 'Datei-Upload' oder 'Live-Mikrofonaufnahme', um echte "
+                "Aufnahmen zur Datenbank hinzuzufügen."
+            )
+        else:
+            col_db1, col_db2 = st.columns([1, 1])
+            with col_db1:
+                confirmed_class = st.selectbox(
+                    "✅ Tatsächliche Klasse bestätigen oder korrigieren:",
+                    CLASS_ORDER,
+                    index=CLASS_ORDER.index(pred_live),
+                    key="db_confirm_class"
+                )
+                confirmed_by_name = st.text_input(
+                    "Bestätigt von (Name):", value="Techniker", key="db_confirmer_name"
+                )
+
+            with col_db2:
+                st.write("")
+                st.write("")
+                if st.button("💾 In Datenbank speichern", key="db_save_button", type="primary"):
+                    timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                    new_filename = f"{confirmed_class.lower()}_{audio_source_label.lower()}_{timestamp_str}.wav"
+                    wav_bytes = audio_to_wav_bytes(analysis_audio)
+
+                    with st.spinner("Speichere dauerhaft in der GitHub-Datenbank..."):
+                        success, message = save_confirmed_recording_to_database(
+                            audio_bytes=wav_bytes,
+                            filename=new_filename,
+                            confirmed_class=confirmed_class,
+                            ki_suggestion=pred_live,
+                            ki_confidence=float(max(probas_live)),
+                            source_type=audio_source_label,
+                            confirmed_by=confirmed_by_name
+                        )
+
+                    if success:
+                        st.success(f"✅ {message}")
+                    else:
+                        st.error(f"❌ {message}")
 
 # =========================================================
 # Tab 3: Wartung & Planung
