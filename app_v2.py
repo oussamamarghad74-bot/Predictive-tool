@@ -289,16 +289,7 @@ import os
 VIDEO_EXTENSIONS = (".mp4", ".mov", ".avi", ".mkv")
 AUDIO_ONLY_EXTENSIONS = (".m4a",)
 
-
 def extract_audio_from_video(uploaded_file, target_sr=SR):
-    """
-    Nimmt eine hochgeladene Video- oder .m4a-Datei (Streamlit
-    UploadedFile-Objekt) und extrahiert daraus die Audiospur
-    als numpy-Array, kompatibel mit extract_audio_features().
-
-    Gibt (audio_array, fehler_nachricht) zurück. Bei Erfolg ist
-    fehler_nachricht None.
-    """
     suffix = os.path.splitext(uploaded_file.name)[1].lower()
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_in:
@@ -309,8 +300,14 @@ def extract_audio_from_video(uploaded_file, target_sr=SR):
 
     try:
         if suffix in AUDIO_ONLY_EXTENSIONS:
-            # .m4a ist bereits eine Audiodatei -> direkt mit librosa lesbar
-            audio, _ = librosa.load(tmp_in_path, sr=target_sr)
+            # .m4a nutzt AAC-Kodierung - moviepy/ffmpeg ist zuverlässiger als librosa direkt
+            from moviepy.audio.io.AudioFileClip import AudioFileClip
+
+            audio_clip = AudioFileClip(tmp_in_path)
+            audio_clip.write_audiofile(tmp_out_path, fps=target_sr, logger=None)
+            audio_clip.close()
+
+            audio, _ = librosa.load(tmp_out_path, sr=target_sr)
 
         elif suffix in VIDEO_EXTENSIONS:
             from moviepy.video.io.VideoFileClip import VideoFileClip
@@ -336,6 +333,7 @@ def extract_audio_from_video(uploaded_file, target_sr=SR):
         for path in [tmp_in_path, tmp_out_path]:
             if os.path.exists(path):
                 os.remove(path)
+
 
 
 def standardize_audio_length(audio, sr=SR, duration=DURATION):
