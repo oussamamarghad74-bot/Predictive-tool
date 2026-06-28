@@ -176,43 +176,109 @@ def audio_to_wav_bytes(y, sr=SR):
     sf.write(buffer, y, sr, format="WAV")
     return buffer.getvalue()
 
+# =========================================================
+# STUFE: Echte Datenbank-Aufnahmen in BEIDE Modelle einbinden
+# (Random Forest Hauptmodell + Isolation Forest Anomaly Detector)
+# =========================================================
+
+def load_real_recordings_by_class_from_github(min_per_class=20):
+    """
+    Lädt ALLE bestätigten Aufnahmen aus der GitHub-Datenbank,
+    gruppiert nach Klasse (Gut/Warnung/Kritisch/Ausfall), und
+    extrahiert ihre akustischen Merkmale.
+
+    Gibt ein Dictionary zurück: {Klasse: [Liste von Feature-Arrays]}
+    sowie eine Zusammenfassung, wie viele echte Aufnahmen pro
+    Klasse vorhanden sind.
+    """
+    token, repo = get_github_config()
+
+    real_features_by_class = {c: [] for c in CLASS_ORDER}
+
+    if not (token and repo):
+        return real_features_by_class, {c: 0 for c in CLASS_ORDER}
+
+    overview_df, _ = get_overview_table(token, repo)
+
+    for klasse in CLASS_ORDER:
+        klasse_rows = overview_df[overview_df["Klasse_bestaetigt"] == klasse]
+
+        for _, row in klasse_rows.iterrows():
+            filename = row["Dateiname"]
+            audio_path = f"Datenbank_Gabelstapler_Audio/{klasse}/{filename}"
+            content, _ = github_get_file(audio_path, token, repo)
+
+            if content is not None:
+                try:
+                    audio, _ = librosa.load(io.BytesIO(content), sr=SR)
+                    audio = standardize_audio_length(audio)
+                    real_features_by_class[klasse].append(extract_audio_features(audio))
+                except Exception:
+                    continue
+
+    counts = {c: len(real_features_by_class[c]) for c in CLASS_ORDER}
+    return real_features_by_class, counts
+
 
 @st.cache_data
-def create_acoustic_training_dataset(n_per_class=70):
+def create_acoustic_training_dataset_v2(n_synthetic_per_class=70):
+    """
+    Kombiniert ECHTE, von Technikern bestätigte Datenbank-Aufnahmen
+    mit synthetischen Tönen für das Random-Forest-Training.
+
+    Echte Aufnahmen werden mit höherem Gewicht (3-fach) eingebracht,
+    da sie wertvoller sind als synthetische Daten – ähnlich dem
+    Prinzip des Human-in-the-Loop-Feedbacks.
+    """
     X = []
     y_labels = []
-    seed = 2000
-    rng = np.random.default_rng(77)
 
+    real_features_by_class, real_counts = load_real_recordings_by_class_from_github()
+
+    REAL_DATA_WEIGHT = 3
+
+    for klasse, feature_list in real_features_by_class.items():
+        for feat in feature_list:
+            for _ in range(REAL_DATA_WEIGHT):
+                X.append(feat)
+                y_labels.append(klasse)
+
+    rng = np.random.default_rng(42)
     motor_typen = ["Elektro", "Diesel", "LPG Gas"]
+    seed = 1000
 
     for state in CLASS_ORDER:
-        for _ in range(n_per_class):
+        for _ in range(n_synthetic_per_class):
             motor_typ = rng.choice(motor_typen)
-            last_kg = rng.integers(1600, 2500)
-            betriebsstunden = rng.integers(500, 8000)
-            noise = rng.uniform(0.02, 0.08)
-
             audio = generate_forklift_sound(
                 state=state,
                 motor_typ=motor_typ,
-                last_kg=last_kg,
-                betriebsstunden=betriebsstunden,
-                factory_noise=noise,
+                last_kg=rng.integers(1600, 2500),
+                betriebsstunden=rng.integers(500, 8000),
+                factory_noise=rng.uniform(0.02, 0.08),
                 seed=seed
             )
-
             feat = extract_audio_features(audio)
             X.append(feat)
             y_labels.append(state)
             seed += 1
 
-    return np.vstack(X), np.array(y_labels)
+    training_info = {
+        "real_counts": real_counts,
+        "n_synthetic_per_class": n_synthetic_per_class,
+        "n_total": len(y_labels)
+    }
+
+    return np.vstack(X), np.array(y_labels), training_info
 
 
-@st.cache_resource
+@st.cache_resource(ttl=3600)
 def train_acoustic_model():
-    X, y = create_acoustic_training_dataset()
+    """
+    AKTUALISIERT: Trainiert das Random-Forest-Modell auf einer
+    Mischung aus echten (Datenbank) und synthetischen Tönen.
+    """
+    X, y, training_info = create_acoustic_training_dataset_v2()
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=42, stratify=y
@@ -230,7 +296,8 @@ def train_acoustic_model():
     acc = accuracy_score(y_test, y_pred)
     cm = confusion_matrix(y_test, y_pred, labels=CLASS_ORDER)
 
-    return model, acc, cm
+    return model, acc, cm, training_info
+
 
 
 def plot_audio_waveform(y, sr=SR):
