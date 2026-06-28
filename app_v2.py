@@ -2980,11 +2980,8 @@ with tab2:
         with col_k3:
             kpi_card("Modell-Genauigkeit", f"{acoustic_accuracy*100:.1f}%", "Random Forest – Testdaten", "#a855f7")
         real_counts_str = ", ".join([f"{k}: {v}" for k, v in acoustic_training_info["real_counts"].items()])
-        st.caption(
-        f"📊 Trainingsdaten: {acoustic_training_info['n_total']} Samples gesamt "
-        f"(echte Datenbank-Aufnahmen — {real_counts_str} — jeweils 3-fach gewichtet, "
-        f"plus {acoustic_training_info['n_synthetic_per_class']} synthetische pro Klasse)"
-            )
+        training_info_text = f"Trainingsdaten: {acoustic_training_info['n_total']} Samples gesamt (echte Datenbank-Aufnahmen -- {real_counts_str} -- jeweils 3-fach gewichtet, plus {acoustic_training_info['n_synthetic_per_class']} synthetische pro Klasse)"
+        st.caption(training_info_text)
         st.subheader("Confusion Matrix – Akustikmodell")
         cm_df = pd.DataFrame(acoustic_cm, index=CLASS_ORDER, columns=CLASS_ORDER)
         st.dataframe(cm_df, use_container_width=True)
