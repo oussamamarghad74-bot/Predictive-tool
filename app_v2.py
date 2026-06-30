@@ -667,19 +667,54 @@ def plot_explanation_chart(contrib_df, predicted_class):
 from sklearn.ensemble import IsolationForest
 
 
-@st.cache_resource
+def load_real_gut_baseline_from_github(min_required=150):
+    """
+    Lädt alle als 'Gut' bestätigten Audiodateien aus der
+    GitHub-Datenbank und extrahiert ihre Merkmale. Falls nicht
+    genug echte Aufnahmen vorhanden sind, wird die Differenz
+    mit synthetischen 'Gut'-Tönen aufgefüllt.
+    """
+    token, repo = get_github_config()
+    real_features = []
+
+    if token and repo:
+        overview_df, _ = get_overview_table(token, repo)
+        gut_rows = overview_df[overview_df["Klasse_bestaetigt"] == "Gut"]
+
+        for _, row in gut_rows.iterrows():
+            filename = row["Dateiname"]
+            audio_path = f"Datenbank_Gabelstapler_Audio/Gut/{filename}"
+            content, _ = github_get_file(audio_path, token, repo)
+
+            if content is not None:
+                try:
+                    audio, _ = librosa.load(io.BytesIO(content), sr=SR)
+                    audio = standardize_audio_length(audio)
+                    real_features.append(extract_audio_features(audio))
+                except Exception:
+                    continue
+
+    n_real = len(real_features)
+    n_synthetic_needed = max(0, min_required - n_real)
+
+    return real_features, n_real, n_synthetic_needed
+
+
+@st.cache_resource(ttl=3600)
 def train_anomaly_detector():
     """
-    Trainiert einen Isolation-Forest NUR auf 'Gut'-Zustände.
-    Jedes Signal, das stark vom normalen Betriebsgeräusch
-    abweicht, wird als Anomalie markiert – unabhängig davon,
-    ob es einer der 4 bekannten Klassen entspricht oder
-    einem völlig NEUEN, unbekannten Fehlertyp.
+    Trainiert den Isolation-Forest-Detektor auf einer Mischung
+    aus ECHTEN bestätigten 'Gut'-Aufnahmen (aus der GitHub-
+    Datenbank) und synthetischen 'Gut'-Tönen als Auffüllung.
     """
     rng = np.random.default_rng(555)
-    X_normal = []
 
-    for _ in range(150):
+    real_features, n_real, n_synthetic_needed = load_real_gut_baseline_from_github(
+        min_required=150
+    )
+
+    synthetic_features = []
+    for _ in range(n_synthetic_needed):
         motor_typ = rng.choice(["Elektro", "Diesel", "LPG Gas"])
         audio = generate_forklift_sound(
             state="Gut",
@@ -689,9 +724,10 @@ def train_anomaly_detector():
             factory_noise=rng.uniform(0.02, 0.08),
             seed=int(rng.integers(0, 100000))
         )
-        X_normal.append(extract_audio_features(audio))
+        synthetic_features.append(extract_audio_features(audio))
 
-    X_normal = np.vstack(X_normal)
+    all_features = real_features + synthetic_features
+    X_normal = np.vstack(all_features)
 
     detector = IsolationForest(
         n_estimators=200,
@@ -700,7 +736,13 @@ def train_anomaly_detector():
     )
     detector.fit(X_normal)
 
-    return detector
+    baseline_info = {
+        "n_real": n_real,
+        "n_synthetic": n_synthetic_needed,
+        "n_total": len(all_features)
+    }
+
+    return detector, baseline_info
 
 
 def detect_anomaly(detector, features):
