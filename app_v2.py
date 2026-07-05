@@ -3056,11 +3056,15 @@ with tab2:
         col_a1, col_a2 = st.columns(2)
         with col_a1:
             st.pyplot(plot_audio_waveform(analysis_audio))
+            st.caption("🎙️ Original (vor Rauschunterdrückung)")
             st.pyplot(plot_audio_spectrum(analysis_audio))
-        with col_a2:
-            st.pyplot(plot_audio_mel(analysis_audio))
 
             analysis_audio_filtered = preprocess_audio_for_analysis(analysis_audio)
+            st.pyplot(plot_audio_waveform(analysis_audio_filtered))
+            st.caption("🔇 Nach Rauschunterdrückung (Band-Pass + Spectral Gating)")
+        with col_a2:
+            st.pyplot(plot_audio_mel(analysis_audio_filtered))
+
             features_live = extract_audio_features(analysis_audio_filtered).reshape(1, -1)
             probas_live = acoustic_model.predict_proba(features_live)[0]
             pred_live = acoustic_model.classes_[np.argmax(probas_live)]
