@@ -3060,7 +3060,8 @@ with tab2:
         with col_a2:
             st.pyplot(plot_audio_mel(analysis_audio))
 
-            features_live = extract_audio_features(analysis_audio).reshape(1, -1)
+            analysis_audio_filtered = preprocess_audio_for_analysis(analysis_audio)
+            features_live = extract_audio_features(analysis_audio_filtered).reshape(1, -1)
             probas_live = acoustic_model.predict_proba(features_live)[0]
             pred_live = acoustic_model.classes_[np.argmax(probas_live)]
 
