@@ -169,7 +169,80 @@ def extract_audio_features(y, sr=SR):
         features.append(np.std(f))
 
     return np.array(features)
+# =========================================================
+# Feature: Audio-Vorverarbeitung zur Rauschunterdrückung
+# Wird VOR extract_audio_features() angewendet, um Umgebungs-
+# geräusche zu reduzieren, bevor MFCC/Spektral-Merkmale
+# berechnet werden. MFCC selbst führt KEINE Rauschunterdrückung
+# durch -- es ist reine Feature-Extraktion.
+# =========================================================
 
+from scipy.signal import butter, sosfilt
+
+
+def bandpass_filter(y, sr=SR, low_freq=80, high_freq=4000, order=4):
+    """
+    Band-Pass-Filter: entfernt sehr tiefe Frequenzen (z.B.
+    Bodenvibrationen, elektrisches Netzbrummen bei 50Hz) und
+    sehr hohe Frequenzen (z.B. elektronisches Rauschen), und
+    behält den Frequenzbereich, in dem Verbrennungs- und
+    Elektromotor-Geräusche typischerweise liegen (80Hz-4kHz).
+    """
+    nyquist = sr / 2
+    low = low_freq / nyquist
+    high = min(high_freq / nyquist, 0.99)
+    sos = butter(order, [low, high], btype="band", output="sos")
+    filtered = sosfilt(sos, y)
+    return filtered.astype(np.float32)
+
+
+def spectral_noise_gate(y, sr=SR, noise_duration=0.5, reduction_factor=0.7):
+    """
+    Spectral Noise Gating: schätzt ein Hintergrundrausch-Profil
+    aus den ersten 0.5 Sekunden der Aufnahme und dämpft
+    Frequenzanteile, die diesem konstanten Rauschprofil
+    entsprechen -- kurze, plötzliche Ereignisse (z.B. ein
+    Klopf-Geräusch bei einem Defekt) bleiben erhalten, da sie
+    sich vom stationären Rauschprofil unterscheiden.
+    """
+    n_fft = 2048
+    hop_length = 512
+
+    stft = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
+    magnitude, phase = np.abs(stft), np.angle(stft)
+
+    noise_frames = int(noise_duration * sr / hop_length)
+    noise_frames = max(1, min(noise_frames, magnitude.shape[1] // 4))
+    noise_profile = np.mean(magnitude[:, :noise_frames], axis=1, keepdims=True)
+
+    mask = magnitude > (noise_profile * (1 + reduction_factor))
+    magnitude_denoised = np.where(mask, magnitude, magnitude * (1 - reduction_factor))
+
+    stft_denoised = magnitude_denoised * np.exp(1j * phase)
+    y_denoised = librosa.istft(stft_denoised, hop_length=hop_length, length=len(y))
+
+    return y_denoised.astype(np.float32)
+
+
+def preprocess_audio_for_analysis(y, sr=SR, apply_bandpass=True, apply_noise_gate=True):
+    """
+    Vollständige Vorverarbeitungs-Pipeline: wird auf JEDES
+    Audiosignal (simuliert, hochgeladen, Live-Mikrofon)
+    angewendet, BEVOR extract_audio_features() aufgerufen wird.
+    """
+    processed = y.copy()
+
+    if apply_bandpass:
+        processed = bandpass_filter(processed, sr=sr)
+
+    if apply_noise_gate:
+        processed = spectral_noise_gate(processed, sr=sr)
+
+    max_val = np.max(np.abs(processed))
+    if max_val > 1e-9:
+        processed = processed / max_val
+
+    return processed
 
 def audio_to_wav_bytes(y, sr=SR):
     buffer = io.BytesIO()
