@@ -3293,7 +3293,8 @@ with tab2:
                 st.write("")
                 if st.button("💾 In Datenbank speichern", key="db_save_button", type="primary"):
                     timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-                    new_filename = f"{confirmed_class.lower()}_{audio_source_label.lower()}_{timestamp_str}.wav"
+                    unique_id = uuid.uuid4().hex[:6]
+                    new_filename = f"{confirmed_class.lower()}_{audio_source_label.lower()}_{timestamp_str}_{unique_id}.wav"
                     wav_bytes = audio_to_wav_bytes(analysis_audio)
 
                     with st.spinner("Speichere dauerhaft in der GitHub-Datenbank..."):
