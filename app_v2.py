@@ -2286,8 +2286,7 @@ if st.sidebar.button("🔄 Cache leeren & Modell neu trainieren", key="force_ret
 
 st.sidebar.caption(
     "Nutze diesen Button nach dem Speichern neuer Aufnahmen in der GitHub-Datenbank, "
-    "um sofort zu testen, ob sich die Klassifikation ändert — ohne 1 Stunde auf den "
-    "automatischen Cache-Ablauf zu warten."
+    "um sofort zu testen, ob sich die Klassifikation ändert."
 )
 
 # =========================================================
