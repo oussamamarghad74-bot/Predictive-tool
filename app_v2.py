@@ -2276,7 +2276,19 @@ manual_threshold = st.sidebar.slider(
 st.sidebar.caption(
     f"🔄 Live Update alle 5s | {time.strftime('%H:%M:%S')} | #{st.session_state.update_counter}"
 )
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔧 Modell-Wartung")
 
+if st.sidebar.button("🔄 Cache leeren & Modell neu trainieren", key="force_retrain_btn"):
+    st.cache_resource.clear()
+    st.sidebar.success("✅ Cache geleert! Modell wird mit den neuesten Datenbank-Einträgen neu trainiert...")
+    st.rerun()
+
+st.sidebar.caption(
+    "Nutze diesen Button nach dem Speichern neuer Aufnahmen in der GitHub-Datenbank, "
+    "um sofort zu testen, ob sich die Klassifikation ändert — ohne 1 Stunde auf den "
+    "automatischen Cache-Ablauf zu warten."
+)
 
 # =========================================================
 # Fleet Evaluation
